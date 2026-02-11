@@ -6,9 +6,12 @@ from etl.serializers import ETLSerializers
 from etl.models import ETL
 
 # listagem de ETLS
-class ETLsListAPIView(generics.ListAPIView):
+class ETLsListAPIView(generics.ListCreateAPIView):
     queryset = ETL.objects.all()
     serializer_class = ETLSerializers
+
+class teste(generics.RetrieveUpdateAPIView)
+    ...
 
     
 
