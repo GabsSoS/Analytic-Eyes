@@ -1,18 +1,22 @@
 from rest_framework import generics
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-
 from etl.serializers import ETLSerializers
 from etl.models import ETL
 
-# listagem de ETLS
+# ================================================== #
+'''
+    As rotas abaixo servem para lista/editar/criar/excluir ETLs
+    Abaixo desse bloco se encontra as rotas que adicionam e editam o scripts de ETLS 
+    nos containers Dockers
+
+'''
+
 class ETLsListAPIView(generics.ListCreateAPIView):
     queryset = ETL.objects.all()
     serializer_class = ETLSerializers
 
-class teste(generics.RetrieveUpdateAPIView)
-    ...
+class ETLRetriveDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = ETL.objects.all()
+    serializer_class = ETLSerializers
 
-    
-
+# ================================================== #
 

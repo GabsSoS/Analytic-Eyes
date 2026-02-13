@@ -7,11 +7,21 @@ STATUS_CHOICES = (
     ('3', 'ETL com Erro'),
 )
 
+PATH_CHOICES = (
+    ('1', 'caminho/pasta1'),
+    ('2', 'caminho/pasta2'),
+    ('3', 'caminho/pasta3'),
+
+)
+
 class ETL(models.Model):
     owner = models.ForeignKey(
-        User,
-        related_name='etl_owned',
-        on_delete=models.CASCADE
+        "auth.User",
+        related_name='etls',
+        on_delete=models.CASCADE,
+        null=False,
+        blank=False,
+
     )
     title = models.CharField(max_length=100, blank=True, null=True)
     create_date = models.DateField(auto_now_add=True)
@@ -24,6 +34,11 @@ class ETL(models.Model):
     status = models.CharField(
         max_length=1,
         choices=STATUS_CHOICES,
+        default='1'
+    )
+    rota = models.CharField(
+        max_length=1,
+        choices=PATH_CHOICES,
         default='1'
     )
 
