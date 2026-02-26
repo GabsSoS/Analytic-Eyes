@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils import timezone
+import time
 
 class Pipeline(models.Model):
     name = models.CharField(max_length=255)
@@ -11,6 +13,65 @@ class Pipeline(models.Model):
     def __str__(self):
         return self.name
     
+    # Criação de Pipeline
+    @classmethod
+    def create_pipeline(cls, name, description, user):
+        return cls.objects.create(
+            name=name,
+            description=description,
+            owner=user
+        )
+    
+    # Verifica se o usuário é owner ou se tem permição de edição
+    def can_execute(self, user):
+        if not user.is_authenticated:
+            return False
+
+        if self.owner == user:
+            return True
+
+        return PipelinePermission.objects.filter(
+            pipeline=self,
+            user=user,
+            permission="execute"
+        ).exists()
+
+    def start_execution(self, user):
+        if not self.can_execute(user):
+            raise PermissionError("Usuário não pode executar")
+
+        if PipelineRun.objects.filter(
+            pipeline=self,
+            status="running"
+        ).exists():
+            raise Exception("Pipeline já está em execução")
+
+        run = PipelineRun.objects.create(
+            pipeline=self,
+            triggered_by=user,
+            status="pending"
+        )
+
+        # Início real da execução
+        run.status = "running"
+        run.started_at = timezone.now()
+        run.save()
+
+        try:
+            # Simulação de execução
+            time.sleep(3)
+
+            run.status = "success"
+        except Exception as e:
+            run.status = "failed"
+            run.error_message = str(e)
+
+        run.finished_at = timezone.now()
+        run.save()
+
+        return run
+
+
 class PipelinePermission(models.Model):
 
     PERMISSION_CHOICES = (
