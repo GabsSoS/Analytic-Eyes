@@ -107,19 +107,14 @@ class PipelinePermission(models.Model):
         unique_together = ("pipeline", "user")
 
     def permission_pipe(self, user, permission):
-        if PipelinePermission.objects.filter(
+        PipelinePermission.objects.update_or_create(
             pipeline=self,
             user=user,
-            permission=permission
-        ).exists():
-            return True
-        else:
-            PipelinePermission.objects.update_or_create(
-                pipeline=self,
-                user=user,
-                defaults={"permission": permission}
-            )
-            return False
+            defaults={"permission": permission},
+        )
+        return True
+
+
         
 class PipelineRun(models.Model):
 
