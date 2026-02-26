@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 import time
 
@@ -24,18 +25,35 @@ class Pipeline(models.Model):
     
     # Verifica se o usuário é owner ou se tem permição de edição
     def can_execute(self, user):
+
+        # Verifica se o usuário esta logado
         if not user.is_authenticated:
             return False
 
+        # Verifica se o usuário é dono da pipe
         if self.owner == user:
             return True
 
+        # Verifica se o usuário mesmo não sendo dono da pipe tem permissão de execute
         return PipelinePermission.objects.filter(
             pipeline=self,
             user=user,
             permission="execute"
         ).exists()
 
+    def pipeline_list(user):
+        if not user.is_authenticated:
+            return PermissionError("Usuário não authenticado realizar login")
+        
+        pipelines = Pipeline.objects.filter(
+            Q(owner=user) |
+            Q(pipelinepermission__user=user,
+            pipelinepermission__permission="execute")
+        ).distinct() 
+
+        return pipelines
+
+    # Execução de fluxo
     def start_execution(self, user):
         if not self.can_execute(user):
             raise PermissionError("Usuário não pode executar")
@@ -88,6 +106,21 @@ class PipelinePermission(models.Model):
     class Meta:
         unique_together = ("pipeline", "user")
 
+    def permission_pipe(self, user, permission):
+        if PipelinePermission.objects.filter(
+            pipeline=self,
+            user=user,
+            permission=permission
+        ).exists():
+            return True
+        else:
+            PipelinePermission.objects.update_or_create(
+                pipeline=self,
+                user=user,
+                defaults={"permission": permission}
+            )
+            return False
+        
 class PipelineRun(models.Model):
 
     class Status(models.TextChoices):
