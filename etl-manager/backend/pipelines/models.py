@@ -41,17 +41,16 @@ class Pipeline(models.Model):
             permission="execute"
         ).exists()
 
-    def pipeline_list(user):
+    @classmethod
+    def pipeline_list(cls, user):
         if not user.is_authenticated:
-            return PermissionError("Usuário não authenticado realizar login")
-        
-        pipelines = Pipeline.objects.filter(
+            return cls.objects.none()
+
+        return cls.objects.filter(
             Q(owner=user) |
             Q(pipelinepermission__user=user,
             pipelinepermission__permission="execute")
-        ).distinct() 
-
-        return pipelines
+        ).distinct()
 
     # Execução de fluxo
     def start_execution(self, user):
@@ -89,7 +88,6 @@ class Pipeline(models.Model):
 
         return run
 
-
 class PipelinePermission(models.Model):
 
     PERMISSION_CHOICES = (
@@ -114,8 +112,6 @@ class PipelinePermission(models.Model):
         )
         return True
 
-
-        
 class PipelineRun(models.Model):
 
     class Status(models.TextChoices):
@@ -152,3 +148,21 @@ class PipelineRun(models.Model):
 
     def __str__(self):
         return f"Run {self.id} - {self.pipeline.name} - {self.status}"
+    
+    #views para histórico de execução de uma pipe específica
+    @classmethod
+    def history(cls, pipeline_id, user):
+        runs = cls.objects.filter(pipeline_id=pipeline_id, triggered_by=user).select_related("triggered_by")
+        
+        data = [
+            {
+                "id": run.id,
+                "status": run.status,
+                "triggered_by": run.triggered_by.username if run.triggered_by else None,
+                "started_at": run.started_at,
+                "finished_at": run.finished_at
+            }
+            for run in runs
+        ]
+        
+        return data

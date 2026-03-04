@@ -20,5 +20,6 @@ services:
     command: celery -A config worker -l info
     volumes:
       - ./backend:/app
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - redis
