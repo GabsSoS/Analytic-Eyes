@@ -1,14 +1,20 @@
 from asyncio import run
-from django.http import HttpResponse
-from .models import Pipeline, PipelineRun, PipelinePermission
 from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.authentication import BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 from django.http import JsonResponse
+
+from .models import Pipeline, PipelineRun
 from .tasks import execute_pipeline
 
 
-
-# View para execução de pipeline
-
+# View para execução de pipeline (POST)
+@api_view(["POST"])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def trigger_pipeline(request, pipeline_id):
     if request.method != "POST":
         return JsonResponse({"error": "Método não permitido"}, status=405)
@@ -16,7 +22,7 @@ def trigger_pipeline(request, pipeline_id):
     pipeline = get_object_or_404(Pipeline, id=pipeline_id)
 
     if not pipeline.can_execute(request.user):
-        return JsonResponse({"error": "Sem permissão"}, status=403)
+        return Response({"error": "Sem permissão"}, status=status.HTTP_403_FORBIDDEN)
 
     run = PipelineRun.objects.create(
         pipeline=pipeline,
@@ -24,40 +30,49 @@ def trigger_pipeline(request, pipeline_id):
         triggered_by=request.user
     )
 
-    execute_pipeline.delay(run.id)  # AQUI dispara o worker
+    # Dispara o worker (assíncrono)
+    execute_pipeline.delay(run.id)
 
-    return JsonResponse({
-        "run_id": run.id,
-        "status": run.status
-    })
-#==================================================
+    # 202 Accepted porque o processamento é assíncrono
+    return Response(
+        {"run_id": run.id, "status": run.status},
+        status=status.HTTP_202_ACCEPTED
+    )
 
-# Listagem de pipes que o usuário tem permissão de executar
+
+# Listagem de pipelines que o usuário tem permissão de executar (GET)
+@api_view(["GET"])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def pipelines(request):
     try:
-        pipes = Pipeline.pipeline_list(request.user) # chama o método pipeline_list para obter as pipes que o usuário tem permissão de executar
-
+        pipes = Pipeline.pipeline_list(request.user)
         data = [
-                    {
-                        "id": p.id,
-                        "name": p.name,
-                        "owner": p.owner.username
-                    }
-                    for p in pipes
-                ]
-
-        return JsonResponse({"pipelines": data}) # retorna a lista de pipes em formato JSON, contendo id, nome e dono de cada pipe
-
+            {
+                "id": p.id,
+                "name": p.name,
+                "owner": p.owner.username
+            }
+            for p in pipes
+        ]
+        return Response({"pipelines": data}, status=status.HTTP_200_OK)
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400) # retorna o erro caso haja algum problema, como usuário não autenticado
-#==================================================
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-# detalhes de uma pipe específica
+
+# Detalhes de uma pipeline específica (GET)
+@api_view(["GET"])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def get_pipeline(request, pipeline_id):
-    pipeline = get_object_or_404(Pipeline, id=pipeline_id) # caso o pipe não exista, retorna 404
 
-    if not pipeline.can_execute(request.user): # verifica se o usuário tem permissão de execução
-        return JsonResponse({"error": "Usuário não tem permissão para acessar esta pipe"}, status=403) # retorna erro de permissão caso o usuário não tenha acesso
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
+
+    if not pipeline.can_execute(request.user):
+        return Response(
+            {"error": "Usuário não tem permissão para acessar esta pipe"},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     data = {
         "id": pipeline.id,
@@ -65,19 +80,22 @@ def get_pipeline(request, pipeline_id):
         "description": pipeline.description,
         "owner": pipeline.owner.username
     }
+    return Response(data, status=status.HTTP_200_OK)
 
-    return JsonResponse(data) # retorna os detalhes da pipe em formato JSON
-#==================================================
 
-#view para histórico de execuções de uma pipe especifica
+# Histórico de execuções de uma pipeline específica (GET)
+@api_view(["GET"])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
 def pipeline_history(request, pipeline_id):
-    pipeline = get_object_or_404(Pipeline, id=pipeline_id) # caso o pipe não exista, retorna 404
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
 
-    if not pipeline.can_execute(request.user): # verifica se o usuário tem permissão de execução
-        return JsonResponse({"error": "Usuário não tem permissão para acessar esta pipe"}, status=403) # retorna erro de permissão caso o usuário não tenha acesso
+    if not pipeline.can_execute(request.user):
+        return Response(
+            {"error": "Usuário não tem permissão para acessar esta pipe"},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
-    runs = PipelineRun.history(pipeline_id, request.user) # chama o método history para obter as execuções da pipe
-
-    return JsonResponse({f"Pipeline {pipeline_id}": runs}) # retorna a lista de execuções em formato JSON, contendo id da execução, status, usuário que iniciou, data de início e data de término
-#==================================================
-
+    runs = PipelineRun.history(pipeline_id, request.user)
+    # Se 'runs' já é uma lista/dict serializável, pode retornar direto
+    return Response({f"Pipeline {pipeline_id}": runs}, status=status.HTTP_200_OK)
