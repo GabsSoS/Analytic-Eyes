@@ -7,8 +7,11 @@ import time
 class Pipeline(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    etl_name = models.CharField(
+        max_length=255,
+        help_text="Nome da ETL (pasta em /etls/)"
+    )
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

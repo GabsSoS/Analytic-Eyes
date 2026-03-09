@@ -4,7 +4,7 @@ from . import views
 urlpatterns = [
     #Execução de pipe e detalhes de uma pipe específica
     path("pipelines/<int:pipeline_id>/", views.trigger_pipeline, name='execute_pipeline'),
-    path("pipelines/<int:pipeline_id>/", views.get_pipeline, name='get_pipeline'),
+    path("pipelines/<int:pipeline_id>/details/", views.get_pipeline, name='get_pipeline'),
    
     # Listagem de pipes
     path("pipelines/", views.pipelines, name='list_pipelines'),
