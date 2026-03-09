@@ -4,42 +4,41 @@ from django.db.models import Q
 from django.utils import timezone
 import time
 
-
 class Pipeline(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    container_image = models.CharField(max_length=255, default="python:3.11-slim")
-    container_command = models.TextField(blank=True, default="")
-    script_path = models.CharField(max_length=500, blank=True, default="")
-    container_env = models.JSONField(blank=True, default=dict)
-    container_timeout_seconds = models.PositiveIntegerField(default=3600)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
-
+    
+    # Criação de Pipeline
     @classmethod
     def create_pipeline(cls, name, description, user):
         return cls.objects.create(
             name=name,
             description=description,
-            owner=user,
+            owner=user
         )
-
+    
+    # Verifica se o usuário é owner ou se tem permição de edição
     def can_execute(self, user):
+
+        # Verifica se o usuário esta logado
         if not user.is_authenticated:
             return False
 
+        # Verifica se o usuário é dono da pipe
         if self.owner == user:
             return True
 
+        # Verifica se o usuário mesmo não sendo dono da pipe tem permissão de execute
         return PipelinePermission.objects.filter(
             pipeline=self,
             user=user,
-            permission="execute",
+            permission="execute"
         ).exists()
 
     @classmethod
@@ -48,54 +47,56 @@ class Pipeline(models.Model):
             return cls.objects.none()
 
         return cls.objects.filter(
-            Q(owner=user)
-            | Q(
-                pipelinepermission__user=user,
-                pipelinepermission__permission="execute",
-            )
+            Q(owner=user) |
+            Q(pipelinepermission__user=user,
+            pipelinepermission__permission="execute")
         ).distinct()
 
+    # Execução de fluxo
     def start_execution(self, user):
         if not self.can_execute(user):
-            raise PermissionError("Usuario nao pode executar")
+            raise PermissionError("Usuário não pode executar")
 
         if PipelineRun.objects.filter(
             pipeline=self,
-            status=PipelineRun.Status.RUNNING,
+            status="running"
         ).exists():
-            raise Exception("Pipeline ja esta em execucao")
+            raise Exception("Pipeline já está em execução")
 
         run = PipelineRun.objects.create(
             pipeline=self,
             triggered_by=user,
-            status=PipelineRun.Status.PENDING,
+            status="pending"
         )
 
-        run.status = PipelineRun.Status.RUNNING
+        # Início real da execução
+        run.status = "running"
         run.started_at = timezone.now()
-        run.save(update_fields=["status", "started_at"])
+        run.save()
 
         try:
+            # Simulação de execução
             time.sleep(3)
-            run.status = PipelineRun.Status.SUCCESS
-        except Exception as exc:
-            run.status = PipelineRun.Status.FAILED
-            run.log = str(exc)
+
+            run.status = "success"
+        except Exception as e:
+            run.status = "failed"
+            run.error_message = str(e)
 
         run.finished_at = timezone.now()
-        run.save(update_fields=["status", "finished_at", "log"])
+        run.save()
 
         return run
 
-
 class PipelinePermission(models.Model):
+
     PERMISSION_CHOICES = (
         ("owner", "Owner"),
         ("edit", "Edit"),
         ("execute", "Execute"),
         ("view", "View"),
     )
-
+    
     pipeline = models.ForeignKey(Pipeline, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     permission = models.CharField(max_length=20, choices=PERMISSION_CHOICES)
@@ -111,8 +112,8 @@ class PipelinePermission(models.Model):
         )
         return True
 
-
 class PipelineRun(models.Model):
+
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
         RUNNING = "RUNNING", "Running"
@@ -122,20 +123,20 @@ class PipelineRun(models.Model):
     pipeline = models.ForeignKey(
         Pipeline,
         on_delete=models.CASCADE,
-        related_name="runs",
+        related_name="runs"
     )
 
     triggered_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
-        blank=True,
+        blank=True
     )
 
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.PENDING,
+        default=Status.PENDING
     )
 
     started_at = models.DateTimeField(null=True, blank=True)
@@ -147,24 +148,21 @@ class PipelineRun(models.Model):
 
     def __str__(self):
         return f"Run {self.id} - {self.pipeline.name} - {self.status}"
-
+    
+    #views para histórico de execução de uma pipe específica
     @classmethod
     def history(cls, pipeline_id, user):
-        runs = (
-            cls.objects.filter(pipeline_id=pipeline_id, triggered_by=user)
-            .select_related("triggered_by")
-            .order_by("-started_at")
-        )
-
+        runs = cls.objects.filter(pipeline_id=pipeline_id, triggered_by=user).select_related("triggered_by")
+        
         data = [
             {
                 "id": run.id,
                 "status": run.status,
                 "triggered_by": run.triggered_by.username if run.triggered_by else None,
-                "started_at": run.started_at.isoformat() if run.started_at else None,
-                "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+                "started_at": run.started_at,
+                "finished_at": run.finished_at
             }
             for run in runs
         ]
-
+        
         return data
