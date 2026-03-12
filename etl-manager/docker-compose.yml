@@ -4,6 +4,8 @@ services:
   redis:
     image: redis:7
     container_name: etl-redis
+    networks:
+      - etl-network
 
   postgres:
     image: postgres:15
@@ -13,12 +15,15 @@ services:
       POSTGRES_PASSWORD: etl_pass
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - etl-network
 
   backend:
     build: ./backend
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./backend:/app
+      - ./etls:/etls
       - /var/run/docker.sock:/var/run/docker.sock  
     ports:
       - "8000:8000"
@@ -33,6 +38,7 @@ services:
     command: celery -A config worker -l info
     volumes:
       - ./backend:/app
+      - ./etls:/etls
       - /var/run/docker.sock:/var/run/docker.sock  
     depends_on:
       - redis

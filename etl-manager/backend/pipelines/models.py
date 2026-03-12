@@ -2,7 +2,9 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
+from django.conf import settings
 import time
+from pathlib import Path
 
 class Pipeline(models.Model):
     name = models.CharField(max_length=255)
@@ -19,10 +21,52 @@ class Pipeline(models.Model):
     
     # Criação de Pipeline
     @classmethod
-    def create_pipeline(cls, name, description, user):
+    def create_pipeline(cls, name, description, user, lib):
+        
+        script_code = '''
+import os
+
+API_VENDAS_URL = os.getenv("API_VENDAS_URL", "http://api.vendas.com")
+DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
+        '''
+        
+        if type(lib) != list:
+            raise ValueError("Lib deve ser uma lista de strings")
+        
+        pipeline_name = name.lower().replace(" ", "_")
+        
+        # Usar BASE_DIR do Django (aponta para backend), parent vai para etl-manager
+        etl_dir = Path(settings.BASE_DIR).parent / "etls" / pipeline_name 
+        
+        # Criar a pasta
+        etl_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Criar arquivo config.py vazio
+        script_path = etl_dir / "config.py"
+        if not script_path.exists():
+            script_path.touch()
+
+        # escreve config padrão em config.py
+        with script_path.open("w") as f:
+            f.write(script_code)
+
+        # criação de arquivo requeriments.txt vazio
+        requirements_path = etl_dir / "requirements.txt"
+        if not requirements_path.exists():
+            requirements_path.touch()
+
+
+            
+        # adiciona texto ao arquivo requirements.txt
+        with requirements_path.open("w") as f:
+            for i in lib:
+                f.write(f"{i}\n")
+            
+        # criação do registro no banco de dados
         return cls.objects.create(
             name=name,
             description=description,
+            etl_name=f'etls/{pipeline_name}',
             owner=user
         )
     

@@ -25,7 +25,7 @@ def execute_pipeline(run_id):
         # Conecta ao Docker
         client = docker.from_env()
         
-        # ✅ EXECUTA O CONTAINER
+        # EXECUTA O CONTAINER
         try:
             logs = client.containers.run(
                 image="etls:latest",  # Imagem que você vai fazer build
