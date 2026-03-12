@@ -3,8 +3,18 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 from django.conf import settings
+from .storage import LocalStorage, PipelineStorage
 import time
-from pathlib import Path
+
+# Inicializa o storage baseado na configuração
+def get_storage():
+    storage_type = getattr(settings, 'PIPELINE_STORAGE_TYPE', 'local')
+    if storage_type == 'local':
+        return LocalStorage()
+    else:
+        raise ValueError(f"Tipo de storage inválido: {storage_type}")
+
+storage = get_storage()
 
 class Pipeline(models.Model):
     name = models.CharField(max_length=255)
@@ -19,50 +29,44 @@ class Pipeline(models.Model):
     def __str__(self):
         return self.name
     
+    def delete(self, *args, **kwargs):
+        """Delete a pipeline e seus scripts"""
+        pipeline_name = self.etl_name.replace("etls/", "")
+        try:
+            storage.delete_pipeline(pipeline_name)
+        except Exception as e:
+            # Log do erro mas não impede a deleção do registro
+            print(f"Erro ao deletar scripts da pipeline {pipeline_name}: {str(e)}")
+        
+        super().delete(*args, **kwargs)
+    
     # Criação de Pipeline
     @classmethod
     def create_pipeline(cls, name, description, user, lib):
         
-        script_code = '''
-import os
+        script_code = '''import os
 
 API_VENDAS_URL = os.getenv("API_VENDAS_URL", "http://api.vendas.com")
 DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
-        '''
+'''
         
         if type(lib) != list:
             raise ValueError("Lib deve ser uma lista de strings")
         
         pipeline_name = name.lower().replace(" ", "_")
         
-        # Usar BASE_DIR do Django (aponta para backend), parent vai para etl-manager
-        etl_dir = Path(settings.BASE_DIR).parent / "etls" / pipeline_name 
-        
-        # Criar a pasta
-        etl_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Criar arquivo config.py vazio
-        script_path = etl_dir / "config.py"
-        if not script_path.exists():
-            script_path.touch()
-
-        # escreve config padrão em config.py
-        with script_path.open("w") as f:
-            f.write(script_code)
-
-        # criação de arquivo requeriments.txt vazio
-        requirements_path = etl_dir / "requirements.txt"
-        if not requirements_path.exists():
-            requirements_path.touch()
-
-
+        try:
+            # Salva config.py usando o storage
+            storage.save_script(pipeline_name, "config.py", script_code)
             
-        # adiciona texto ao arquivo requirements.txt
-        with requirements_path.open("w") as f:
-            for i in lib:
-                f.write(f"{i}\n")
+            # Salva requirements.txt usando o storage
+            requirements_content = "\n".join(lib)
+            storage.save_script(pipeline_name, "requirements.txt", requirements_content)
             
-        # criação do registro no banco de dados
+        except Exception as e:
+            raise Exception(f"Erro ao salvar scripts da pipeline: {str(e)}")
+            
+        # Criação do registro no banco de dados
         return cls.objects.create(
             name=name,
             description=description,

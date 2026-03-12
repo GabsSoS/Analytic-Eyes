@@ -26,7 +26,7 @@ def executar_etl(etl_name, run_id):
     # Executa a função principal da ETL
     print(f" Executando ETL: {etl_name} (Run ID: {run_id})")
     resultado = etl_module.executar_etl_vendas(run_id)  # ou o nome da função
-    print(f"✅ ETL {etl_name} finalizada com sucesso!")
+    print(f" ETL {etl_name} finalizada com sucesso!")
     
     return resultado
 

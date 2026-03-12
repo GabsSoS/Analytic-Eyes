@@ -38,3 +38,4 @@ if __name__ == "__main__":
     run_id = sys.argv[1] if len(sys.argv) > 1 else "local_test"
     resultado = executar_etl_vendas(run_id)
     print(f"\nResultado: {resultado}")
+    print("funcionando")

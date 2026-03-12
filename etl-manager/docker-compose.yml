@@ -18,6 +18,12 @@ services:
     networks:
       - etl-network
 
+  etls:
+    build: ./etls
+    image: etls:latest
+    networks:
+      - etl-network
+
   backend:
     build: ./backend
     command: python manage.py runserver 0.0.0.0:8000

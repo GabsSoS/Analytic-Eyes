@@ -36,8 +36,7 @@ def execute_pipeline(run_id):
                     "REDIS_URL": "redis://redis:6379",
                 },
                 network="etl-manager_default",
-                remove=True,  # Remove container após terminar
-                timeout=3600  # 1 hora de timeout
+                remove=True  # Remove container após terminar
             )
             
             # Converte bytes para string

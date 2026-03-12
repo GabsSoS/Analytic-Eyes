@@ -78,7 +78,8 @@ def get_pipeline(request, pipeline_id):
         "id": pipeline.id,
         "name": pipeline.name,
         "description": pipeline.description,
-        "owner": pipeline.owner.username
+        "owner": pipeline.owner.username,
+        "etl_name": pipeline.etl_name
     }
     return Response(data, status=status.HTTP_200_OK)
 
