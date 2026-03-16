@@ -11,6 +11,37 @@ from .models import Pipeline, PipelineRun
 from .tasks import execute_pipeline
 
 
+@api_view(["POST"])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
+def pipeline_create(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Método não permitido"}, status=405)
+
+    name = request.data.get("name")
+    description = request.data.get("description", "")
+    lib = request.data.get("lib", [])
+    main_code = request.data.get("main_code", "")
+
+    if not name:
+        return JsonResponse({"error": "O campo 'name' é obrigatório"}, status=400)
+
+    try:
+        pipeline = Pipeline.create_pipeline(
+            name=name,
+            description=description,
+            user=request.user,
+            lib=lib,
+            main_code=main_code
+        )
+        return Response(
+            {"id": pipeline.id, "name": pipeline.name},
+            status=status.HTTP_201_CREATED
+        )
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 # View para execução de pipeline (POST)
 @api_view(["POST"])
 @authentication_classes([BasicAuthentication])
@@ -39,7 +70,6 @@ def trigger_pipeline(request, pipeline_id):
         status=status.HTTP_202_ACCEPTED
     )
 
-
 # Listagem de pipelines que o usuário tem permissão de executar (GET)
 @api_view(["GET"])
 @authentication_classes([BasicAuthentication])
@@ -58,7 +88,6 @@ def pipelines(request):
         return Response({"pipelines": data}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
 
 # Detalhes de uma pipeline específica (GET)
 @api_view(["GET"])
@@ -82,7 +111,6 @@ def get_pipeline(request, pipeline_id):
         "etl_name": pipeline.etl_name
     }
     return Response(data, status=status.HTTP_200_OK)
-
 
 # Histórico de execuções de uma pipeline específica (GET)
 @api_view(["GET"])

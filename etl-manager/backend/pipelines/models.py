@@ -42,20 +42,22 @@ class Pipeline(models.Model):
     
     # Criação de Pipeline
     @classmethod
-    def create_pipeline(cls, name, description, user, lib):
+    def create_pipeline(cls, name, description, user, lib, main_code):
         
         script_code = '''import os
 
 API_VENDAS_URL = os.getenv("API_VENDAS_URL", "http://api.vendas.com")
 DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
 '''
-        
+
         if type(lib) != list:
             raise ValueError("Lib deve ser uma lista de strings")
         
         pipeline_name = name.lower().replace(" ", "_")
         
         try:
+            # Salva main.py usando o storage
+            storage.save_script_main_py(pipeline_name, "main.py", main_code)
             # Salva config.py usando o storage
             storage.save_script(pipeline_name, "config.py", script_code)
             

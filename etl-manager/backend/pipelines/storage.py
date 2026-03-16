@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from django.conf import settings
-
+import base64
+import sys
+from pathlib import Path
 
 class PipelineStorage(ABC):
     """Abstração para armazenamento de scripts de pipelines"""
@@ -43,7 +45,29 @@ class LocalStorage(PipelineStorage):
         
         file_path = pipeline_dir / filename
         file_path.write_text(content)
-    
+
+    def save_script_main_py(self, pipeline_name: str, filename: str, content: str) -> None:
+        
+        def decode_from_base64(b64_text: str) -> str:
+            """
+            Decodifica uma string Base64 para texto normal.
+            """
+            if not isinstance(b64_text, str):
+                raise TypeError("O valor a ser decodificado deve ser uma string.")
+            try:
+                return base64.b64decode(b64_text.encode("utf-8")).decode("utf-8")
+            except Exception:
+                raise ValueError("String Base64 inválida ou corrompida.")
+        
+        
+        
+        """Salva um script no disco local"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        pipeline_dir.mkdir(parents=True, exist_ok=True)
+        
+        file_path = pipeline_dir / filename
+        file_path.write_text(content)
+
     def get_script(self, pipeline_name: str, filename: str) -> str:
         """Lê um script do disco local"""
         pipeline_dir = self._get_pipeline_dir(pipeline_name)
@@ -53,6 +77,8 @@ class LocalStorage(PipelineStorage):
             raise FileNotFoundError(f"Script {filename} não encontrado em {pipeline_name}")
         
         return file_path.read_text()
+    
+
     
     def delete_pipeline(self, pipeline_name: str) -> None:
         """Deleta a pasta da pipeline"""
