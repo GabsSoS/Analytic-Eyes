@@ -57,7 +57,7 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
         
         try:
             # Salva main.py usando o storage
-            storage.save_script_main_py(pipeline_name, "main.py", main_code)
+            storage.save_script(pipeline_name, "main.py", main_code)
             # Salva config.py usando o storage
             storage.save_script(pipeline_name, "config.py", script_code)
             

@@ -46,21 +46,7 @@ class LocalStorage(PipelineStorage):
         file_path = pipeline_dir / filename
         file_path.write_text(content)
 
-    def save_script_main_py(self, pipeline_name: str, filename: str, content: str) -> None:
-        
-        def decode_from_base64(b64_text: str) -> str:
-            """
-            Decodifica uma string Base64 para texto normal.
-            """
-            if not isinstance(b64_text, str):
-                raise TypeError("O valor a ser decodificado deve ser uma string.")
-            try:
-                return base64.b64decode(b64_text.encode("utf-8")).decode("utf-8")
-            except Exception:
-                raise ValueError("String Base64 inválida ou corrompida.")
-        
-        
-        
+    def save_script_main_py(self, pipeline_name: str, filename: str, content: str) -> None:        
         """Salva um script no disco local"""
         pipeline_dir = self._get_pipeline_dir(pipeline_name)
         pipeline_dir.mkdir(parents=True, exist_ok=True)
