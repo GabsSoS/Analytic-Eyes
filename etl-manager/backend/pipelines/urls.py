@@ -2,6 +2,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    #Criação de usuário
+    path("users/create/", views.create_user, name='create_user'),
+
     # Criação de pipeline
     path("pipelines/create/", views.pipeline_create, name='create_pipeline'),
         

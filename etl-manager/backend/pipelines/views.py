@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes
 from rest_framework.authentication import BasicAuthentication
@@ -160,3 +161,36 @@ def pipeline_history(request, pipeline_id):
     # Se 'runs' já é uma lista/dict serializável, pode retornar direto
     return Response({f"Pipeline {pipeline_id}": runs}, status=status.HTTP_200_OK)
 
+# Criação de User e autenticação básica (POST)
+@api_view(["POST"])
+@authentication_classes([BasicAuthentication])
+@permission_classes([IsAuthenticated])
+def create_user(request):
+    
+    # Apenas staff pode criar usuários
+    if not request.user.is_staff:
+        return Response(
+            {"error": "Apenas usuários staff podem criar novos usuários"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    username = request.data.get("username")
+    password = request.data.get("password")
+
+    if not username or not password:
+        return Response(
+            {"error": "Campos 'username' e 'password' são obrigatórios"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if User.objects.filter(username=username).exists():
+        return Response(
+            {"error": "Usuário já existe"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    user = User.objects.create_user(username=username, password=password)
+    return Response(
+        {"message": "Usuário criado com sucesso", "username": user.username},
+        status=status.HTTP_201_CREATED
+    )
