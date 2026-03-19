@@ -49,7 +49,6 @@ class Pipeline(models.Model):
 API_VENDAS_URL = os.getenv("API_VENDAS_URL", "http://api.vendas.com")
 DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
 '''
-
         if type(lib) != list:
             raise ValueError("Lib deve ser uma lista de strings")
         

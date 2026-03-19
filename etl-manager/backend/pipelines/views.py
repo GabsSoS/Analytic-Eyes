@@ -7,12 +7,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import JsonResponse
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 import json
 
 from .models import Pipeline, PipelineRun
 from .tasks import execute_pipeline
 
 # View para criação de pipeline (POST)
+@extend_schema(
+    operation_id='create_pipeline',
+    description='Cria uma nova pipeline ETL com código e dependências',
+    request=OpenApiTypes.OBJECT,
+    responses={201: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT}
+)
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
 @authentication_classes([BasicAuthentication])
@@ -75,6 +82,14 @@ def pipeline_create(request):
         return Response({"error": str(e)}, status=400)
     
 # View para execução de pipeline (POST)
+@extend_schema(
+    operation_id='trigger_pipeline',
+    description='Dispara a execução de uma pipeline existente de forma assíncrona',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline')
+    ],
+    responses={202: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
 @api_view(["POST"])
 @authentication_classes([BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -103,6 +118,11 @@ def trigger_pipeline(request, pipeline_id):
     )
 
 # Listagem de pipelines que o usuário tem permissão de executar (GET)
+@extend_schema(
+    operation_id='list_pipelines',
+    description='Lista todas as pipelines que o usuário autenticado tem permissão de executar',
+    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT}
+)
 @api_view(["GET"])
 @authentication_classes([BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -122,6 +142,14 @@ def pipelines(request):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # Detalhes de uma pipeline específica (GET)
+@extend_schema(
+    operation_id='get_pipeline_details',
+    description='Retorna os detalhes de uma pipeline específica se o usuário tiver permissão',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline')
+    ],
+    responses={200: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
 @api_view(["GET"])
 @authentication_classes([BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -145,6 +173,14 @@ def get_pipeline(request, pipeline_id):
     return Response(data, status=status.HTTP_200_OK)
 
 # Histórico de execuções de uma pipeline específica (GET)
+@extend_schema(
+    operation_id='get_pipeline_history',
+    description='Retorna o histórico de execuções de uma pipeline',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline')
+    ],
+    responses={200: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
 @api_view(["GET"])
 @authentication_classes([BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -162,6 +198,12 @@ def pipeline_history(request, pipeline_id):
     return Response({f"Pipeline {pipeline_id}": runs}, status=status.HTTP_200_OK)
 
 # Criação de User e autenticação básica (POST)
+@extend_schema(
+    operation_id='create_user',
+    description='Cria um novo usuário na plataforma (apenas staff)',
+    request=OpenApiTypes.OBJECT,
+    responses={201: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT}
+)
 @api_view(["POST"])
 @authentication_classes([BasicAuthentication])
 @permission_classes([IsAuthenticated])
