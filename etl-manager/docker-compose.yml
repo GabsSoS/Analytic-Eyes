@@ -24,6 +24,20 @@ services:
     networks:
       - etl-network
 
+  frontend:
+    image: node:20-alpine
+    container_name: etl-frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: npm run dev -- --host
+    ports:
+      - "5173:5173"
+    networks:
+      - etl-network
+    depends_on:
+      - backend
+
   backend:
     build: ./backend
     command: python manage.py runserver 0.0.0.0:8000
@@ -51,6 +65,9 @@ services:
       - postgres
     networks:
       - etl-network
+
+
+
 
 volumes:
   postgres_data:
