@@ -1,33 +1,65 @@
-background {
-    background-color: #FFFFFF;
-    width: 100vh;
-    height: 100vh;
-    overflow: hidden;
+/* Reset total */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
+/* Container principal */
+.background {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background-color: #FFFFFF;
+  overflow: hidden;
+}
+
+/* Corrige comportamento padrão de imagem */
+img {
+  display: block;
+}
+
+.onda-esquerda,
+.onda-direita {
+  position: absolute;
+
+  width: 40vw;          /* 🔽 DIMINUI AQUI */
+  max-width: 600px;     /* trava no desktop */
+}
+
+/* posições */
 .onda-esquerda {
-    position: absolute;
-    top: 100vh;
-    left: 0;
-
-    width: 56.18vw;
-    max-width: 767.28px;
-
-    height: 71.1vh;
-    max-height: 546.12px;
-
-
+  bottom: 0;
+  left: 0;
 }
 
 .onda-direita {
-    position: absolute;
-    top: 0px;
-    right: 0;
-        
-    width: 56.18vw;
-    max-width: 767.28px;
+  top: 0;
+  right: 0;
+}
 
-    height: 71.1vh;
-    max-height: 546.12px;
+/* imagem */
+.onda-esquerda img,
+.onda-direita img {
+  width: 100%;
+  height: auto;         /* ✅ mantém proporção */
+  display: block;
+}
 
+.onda-direita img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.onda-esquerda,
+.onda-direita {
+  pointer-events: none;
+}
+
+.onda-esquerda,
+.onda-direita {
+  width: clamp(220px, 30vw, 520px);
 }
