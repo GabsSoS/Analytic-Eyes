@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import Layout from './pages/Layout/Layout'
 import Login from './pages/Login/Login'
 import Home from './pages/Home/Home'
-import Fluxos from './pages/Fluxos/Fluxos'
+import Fluxos from './pages/Fluxos'
 import Details from './pages/Details/Details'
 import Settings from './pages/Settings/Settings'
 
