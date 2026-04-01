@@ -6,8 +6,9 @@ function Sidebar() {
     <aside className="sidebar">
       <h2>ETL</h2>
       <nav>
-        <Link to="/">Dashboard</Link>
-        <Link to="/jobs">Jobs</Link>
+        <Link to="/home">Home</Link>
+        <Link to="/fluxos">Fluxos</Link>
+        <Link to="/details">Details</Link>
         <Link to="/settings">Settings</Link>
       </nav>
     </aside>

@@ -1,0 +1,33 @@
+background {
+    background-color: #FFFFFF;
+    width: 100vh;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.onda-esquerda {
+    position: absolute;
+    top: 100vh;
+    left: 0;
+
+    width: 56.18vw;
+    max-width: 767.28px;
+
+    height: 71.1vh;
+    max-height: 546.12px;
+
+
+}
+
+.onda-direita {
+    position: absolute;
+    top: 0px;
+    right: 0;
+        
+    width: 56.18vw;
+    max-width: 767.28px;
+
+    height: 71.1vh;
+    max-height: 546.12px;
+
+}

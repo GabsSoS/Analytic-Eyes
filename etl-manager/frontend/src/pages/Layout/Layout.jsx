@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import Header from "../../components/Header";
 import Sidebar from "../../components/Sidebar";
 
+
 function Layout() {
   return (
     <>
@@ -9,7 +10,7 @@ function Layout() {
       <div style={{ display: "flex" }}>
         <Sidebar />
 
-        ✅ <main>
+        <main>
           <Outlet />
         </main>
       </div>
