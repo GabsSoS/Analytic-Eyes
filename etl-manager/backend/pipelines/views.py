@@ -13,6 +13,23 @@ import json
 from .models import Pipeline, PipelineRun
 from .tasks import execute_pipeline
 
+#view para realizar login
+def login(request):
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        
+        user = IsAuthenticated(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return JsonResponse({"message": "Login bem-sucedido"}, status=200)
+        else:
+            return JsonResponse({"error": "Credenciais inválidas"}, status=400)
+    else:
+        return JsonResponse({"error": "Método não permitido"}, status=405)
+
+
+
 # View para criação de pipeline (POST)
 @extend_schema(
     operation_id='create_pipeline',

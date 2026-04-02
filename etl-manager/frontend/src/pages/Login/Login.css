@@ -24,9 +24,9 @@ img {
 .onda-esquerda,
 .onda-direita {
   position: absolute;
-
-  width: 40vw;          /* 🔽 DIMINUI AQUI */
-  max-width: 600px;     /* trava no desktop */
+  width: clamp(220px, 30vw, 520px);
+  max-width: 600px;
+  pointer-events: none;
 }
 
 /* posições */
@@ -36,30 +36,158 @@ img {
 }
 
 .onda-direita {
-  top: 0;
-  right: 0;
+  top: -9.00vh;
+  right: -7.32vw;
 }
 
 /* imagem */
-.onda-esquerda img,
-.onda-direita img {
-  width: 100%;
-  height: auto;         /* ✅ mantém proporção */
+.onda-esquerda img {
+  width: 80%;
+  height: auto;
   display: block;
+  z-index: 1;
 }
 
 .onda-direita img {
   width: 100%;
   height: 100%;
+  display: block;
+  z-index: 1;
   object-fit: cover;
 }
 
-.onda-esquerda,
-.onda-direita {
-  pointer-events: none;
+
+
+.foto-walpaper {
+  position: absolute;
+  top: 52%;
+  left: 64%;
+  transform: translate(-50%, -50%);
+  width: clamp(47.56vw, 87.56vw, 60.00vw);
+  height: auto;
+  z-index: 2;
 }
 
-.onda-esquerda,
-.onda-direita {
-  width: clamp(220px, 30vw, 520px);
+.campo-login {
+  position: absolute;
+  top: 30%;
+  left: 20%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  z-index: 3;
+}
+
+.logo {
+  width: clamp(150px, 20vw, 320px);
+  height: auto;
+  margin-bottom: 1rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.email-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 30.50vw;
+  height: auto;
+}
+
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 30.50vw;
+  height: auto;
+}
+
+.email-input-container,
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: clamp(260px, 28vw, 420px);
+  height: 53px;
+}
+
+.user-icon {
+  position: absolute;
+  left: 12px;
+  width: 24px;
+  height: 24px;
+  z-index: 2;
+}
+
+.password-icon {
+  position: absolute;
+  left: 12px;
+  width: 24px;
+  height: 24px;
+  z-index: 2;
+}
+
+.email, .password {
+  width: 100%;
+  height: 100%;
+  padding-left: 50px;
+  border: none;
+  border-bottom: 2px solid #5388FF;
+  color: #5388FF;
+  font-family: "Inria Sans", sans-serif;
+  font-size: 1rem;
+  background-color: transparent;
+}
+
+.email::placeholder, .password::placeholder {
+  color: #ADB5BD;
+  font-family: "Inria Sans", sans-serif;
+}
+
+.email:focus, .password:focus {
+  outline: none;
+}
+
+.login-button {
+  width: 292px;
+  height: 53px;
+  padding: 10px 20px;
+  font-size: 1.5rem;
+  background-color: #B3CAFF;
+  color: white;
+  border: none;
+  border-radius: 100px;
+  font-family: "Inria Sans", sans-serif;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-button:hover {
+  background-color: #a0bbff;
+
+}
+
+.email,
+.password {
+  width: 100%;
+  height: 44px;              /* padrão acessível */
+  padding-left: 50px;
+
+  border: none;
+  border-bottom: 2px solid #5388FF;
+
+  font-size: 1rem;           /* acessível */
+  font-family: "Inria Sans", sans-serif;
+  color: #5388FF;
+
+  background-color: transparent;
 }
