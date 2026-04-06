@@ -1,32 +1,57 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes
-from rest_framework.authentication import BasicAuthentication
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import BasicAuthentication, TokenAuthentication
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.authtoken.models import Token
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 import json
-
 from .models import Pipeline, PipelineRun
 from .tasks import execute_pipeline
 
 #view para realizar login
-def login(request):
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def user_login(request):
     if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
+        username = request.data.get("username")
+        password = request.data.get("password")
         
-        user = IsAuthenticated(request, username=username, password=password)
+        if not username or not password:
+            return Response(
+                {"error": "Username e password são obrigatórios"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Autentica o usuário
+        user = authenticate(username=username, password=password)
+        
         if user is not None:
-            login(request, user)
-            return JsonResponse({"message": "Login bem-sucedido"}, status=200)
+            # Obtém ou cria um token para o usuário
+            token, created = Token.objects.get_or_create(user=user)
+            return Response(
+                {
+                    "message": "Login bem-sucedido",
+                    "token": token.key,
+                    "username": user.username
+                },
+                status=status.HTTP_200_OK
+            )
         else:
-            return JsonResponse({"error": "Credenciais inválidas"}, status=400)
+            return Response(
+                {"error": "Credenciais inválidas"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
     else:
-        return JsonResponse({"error": "Método não permitido"}, status=405)
+        return Response(
+            {"error": "Método não permitido"},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
 
 
 
@@ -39,7 +64,7 @@ def login(request):
 )
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
-@authentication_classes([BasicAuthentication])
+@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def pipeline_create(request):
    
@@ -108,7 +133,7 @@ def pipeline_create(request):
     responses={202: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
 )
 @api_view(["POST"])
-@authentication_classes([BasicAuthentication])
+@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def trigger_pipeline(request, pipeline_id):
     if request.method != "POST":
@@ -141,7 +166,7 @@ def trigger_pipeline(request, pipeline_id):
     responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT}
 )
 @api_view(["GET"])
-@authentication_classes([BasicAuthentication])
+@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def pipelines(request):
     try:
@@ -168,7 +193,7 @@ def pipelines(request):
     responses={200: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
 )
 @api_view(["GET"])
-@authentication_classes([BasicAuthentication])
+@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def get_pipeline(request, pipeline_id):
 
@@ -199,7 +224,7 @@ def get_pipeline(request, pipeline_id):
     responses={200: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
 )
 @api_view(["GET"])
-@authentication_classes([BasicAuthentication])
+@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def pipeline_history(request, pipeline_id):
     pipeline = get_object_or_404(Pipeline, id=pipeline_id)
@@ -222,7 +247,7 @@ def pipeline_history(request, pipeline_id):
     responses={201: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT}
 )
 @api_view(["POST"])
-@authentication_classes([BasicAuthentication])
+@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def create_user(request):
     

@@ -191,3 +191,11 @@ img {
 
   background-color: transparent;
 }
+
+.error-message {
+  color: #dc3545;
+  font-size: 0.875rem;
+  font-family: "Inria Sans", sans-serif;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}

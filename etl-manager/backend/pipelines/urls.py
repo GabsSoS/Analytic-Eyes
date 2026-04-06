@@ -2,6 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+
+    # Rota de login
+    path("auth/login/", views.user_login, name='login'),
+
     #Criação de usuário
     path("users/create/", views.create_user, name='create_user'),
 
