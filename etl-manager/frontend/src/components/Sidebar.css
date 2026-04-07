@@ -1,17 +1,299 @@
 .sidebar {
-  position: absolute ;
+  position: fixed;
+  left: 0;
+  top: 60px;
   width: 300px;
-  height: 100vh;
+  height: calc(100vh - 60px);
   background: #F4F4F4;
-  color: white;
+  color: #333;
   padding: 20px;
-  margin-top: 60px;
+  transition: all 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  z-index: 999;
 }
 
-
+.sidebar ul {
+  display: flex;
+  flex-direction: column;
+  margin-top: 60px;
+  list-style: none;
+  padding: 0;
+  gap: 5px;
+}
 
 .icons {
   position: absolute;
-  top: 0;
   cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+
+.active {
+  width: 300px;
+}
+
+.active .sidebar {
+  width: 300px;
+}
+
+.active .icons {
+  left: 25px;
+}
+
+.deactivate {
+  width: 80px;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+}
+
+.deactivate .sidebar {
+  width: 80px;
+  padding: 20px 10px;
+}
+
+.deactivate .sidebar ul {
+  margin-top: 60px;
+}
+
+.deactivate .icons {
+  left: 35px;
+}
+
+.container-li {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  font-family: "Inria Sans", sans-serif;
+  font-weight: normal;
+  padding: 10px;
+  color: #666;
+  text-decoration: none;
+  transition: all 0.3s ease-in-out;
+  list-style: none;
+  margin: 5px 0;
+  border-radius: 5px;
+}
+
+.container-li a {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+  color: #666;
+  gap: 15px;
+}
+
+.container-li a img {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  object-fit: contain;
+  margin: 0;
+}
+
+.container-li a span {
+  font-size: 14px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  height: 28px;
+}
+
+.container-li:hover {
+  background-color: #e0e0e0;
+}
+
+.container-li.active-link a {
+  color: #0066ff;
+  font-weight: 500;
+}
+
+.deactivate .container-li {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.deactivate .container-li a {
+  justify-content: center;
+  gap: 0;
+}
+
+.deactivate .container-li span {
+  display: none;
+}
+
+/* Responsive - Tablets */
+@media (max-width: 992px) {
+  .sidebar {
+    top: 60px;
+    width: 280px;
+  }
+
+  .active {
+    width: 280px;
+  }
+
+  .active .sidebar {
+    width: 280px;
+  }
+
+  .container-li {
+    padding: 8px 8px;
+    margin: 4px 0;
+  }
+
+  .container-li a {
+    gap: 12px;
+  }
+
+  .container-li a img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .container-li a span {
+    font-size: 13px;
+  }
+}
+
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+  .sidebar {
+    top: 50px;
+    height: calc(100vh - 50px);
+    width: 250px;
+    padding: 15px;
+  }
+
+  .active {
+    width: 250px;
+  }
+
+  .active .sidebar {
+    width: 250px;
+  }
+
+  .deactivate {
+    width: 70px;
+  }
+
+  .deactivate .sidebar {
+    width: 70px;
+    padding: 15px 8px;
+  }
+
+  .icons {
+    top: 15px;
+    left: 20px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .icons img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .sidebar ul {
+    margin-top: 50px;
+    gap: 4px;
+  }
+
+  .container-li {
+    padding: 8px;
+    margin: 4px 0;
+    font-size: 0.9rem;
+  }
+
+  .container-li a {
+    gap: 10px;
+  }
+
+  .container-li a img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .container-li a span {
+    font-size: 12px;
+    height: 20px;
+  }
+}
+
+/* Responsive - Small Mobile */
+@media (max-width: 480px) {
+  .sidebar {
+    top: 50px;
+    height: calc(100vh - 50px);
+    width: 220px;
+    padding: 12px;
+  }
+
+  .active {
+    width: 220px;
+  }
+
+  .active .sidebar {
+    width: 220px;
+  }
+
+  .deactivate {
+    width: 65px;
+  }
+
+  .deactivate .sidebar {
+    width: 65px;
+    padding: 12px 6px;
+  }
+
+  .icons {
+    top: 12px;
+    left: 18px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .icons img {
+    width: 18px;
+    height: 18px;
+  }
+
+  .sidebar ul {
+    margin-top: 45px;
+    gap: 3px;
+  }
+
+  .container-li {
+    padding: 6px;
+    margin: 3px 0;
+    font-size: 0.85rem;
+  }
+
+  .container-li a {
+    gap: 8px;
+  }
+
+  .container-li a img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .container-li a span {
+    font-size: 11px;
+    height: 22px;
+  }
+
+  .deactivate .container-li {
+    padding: 8px 0;
+  }
 }
