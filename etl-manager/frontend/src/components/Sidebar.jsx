@@ -45,22 +45,20 @@ function Sidebar() {
             </Link>
           </li>
 
-          <li className={`container-li ${isCurrentPage("/fluxos") ? "active-link" : ""}`}>
-            <Link to="/fluxos">
+          <li className={`container-li ${isCurrentPage("/criar") ? "active-link" : ""}`}>
+            <Link to="/criar">
               <img
-                src={isCurrentPage("/fluxos") ? CriarAtivo  : CriarDesativado}
-                alt="Fluxos"
-                
+                src={isCurrentPage("/criar") ? CriarAtivo  : CriarDesativado}
+                alt="Criar"
               />
               <span>Criar</span>
             </Link>
           </li>
-          <li className={`container-li ${isCurrentPage("/details") ? "active-link" : ""}`}>
-            <Link to="/Fluxos">
+          <li className={`container-li ${isCurrentPage("/fluxos") ? "active-link" : ""}`}>
+            <Link to="/fluxos">
               <img
-                src={isCurrentPage("/Fluxos") ? FluxoAtivo : FluxoDesativado}
-                alt="/Fluxos"
-                
+                src={isCurrentPage("/fluxos") ? FluxoAtivo : FluxoDesativado}
+                alt="/fluxos"
               />
               <span>Fluxos</span>
             </Link>
@@ -70,9 +68,8 @@ function Sidebar() {
                 <img
                 src={isCurrentPage("/settings") ? SettingsAtiva : SettingsDesativado}
                 alt="/settings"
-                
               />
-              <span>Settings</span>
+              <span>Configurações</span>
             </Link>
           </li>
         </ul>
