@@ -1,9 +1,16 @@
+import "./Fluxos.css";
 
 function Criar() {
   return (
-    <div>
-      <h1>Criar</h1>
-    </div>
+    <div className="container">
+      <div className="etapa1">
+        <div className="cabecalho">
+          <div className="circulo"></div>
+        </div>
+      </div>
+
+    </div >
+    
   );
 }
 

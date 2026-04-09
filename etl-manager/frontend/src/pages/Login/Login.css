@@ -166,6 +166,7 @@ img {
   border: none;
   border-radius: 100px;
   font-family: "Inria Sans", sans-serif;
+  outline: none;
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease;

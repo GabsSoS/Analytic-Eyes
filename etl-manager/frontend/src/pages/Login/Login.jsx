@@ -38,7 +38,7 @@ function Login() {
       // Salva o token
       localStorage.setItem('token', res.data.token);
       // Redireciona para home
-      navigate('/');
+      navigate('/home');
     } catch (err) {
       console.error("Erro no login:", err);
       setError(err.response?.data?.error || "Erro ao fazer login. Verifique suas credenciais.");
