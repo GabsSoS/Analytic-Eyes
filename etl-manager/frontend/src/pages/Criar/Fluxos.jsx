@@ -1,5 +1,6 @@
 import "./Fluxos.css";
 import { useState } from "react";
+import Editor from '@monaco-editor/react';
 import FolderIcon from '../../assets/Fluxos/folder .png';
 import FolderMiniIcon from '../../assets/Fluxos/mini file.png';
 
@@ -8,6 +9,8 @@ function Criar() {
   const [inputValue, setInputValue] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [editorContent, setEditorContent] = useState("");
+  const [editorLanguage, setEditorLanguage] = useState("python");
 
   const ownersList = ["João", "Maria", "Pedro", "Ana"];
 
@@ -35,6 +38,14 @@ function Criar() {
     );
 
     setSelectedFiles(pyFiles);
+    if (pyFiles.length > 0) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setEditorContent(e.target.result || "");
+        setEditorLanguage("python");
+      };
+      reader.readAsText(pyFiles[0]);
+    }
   };
 
   const handleDrop = (event) => {
@@ -148,11 +159,20 @@ function Criar() {
             </div>
           )}
         </div>
-        <div className="code-field"></div>
+        <div className="code-field">
+          <Editor
+            height="400px"
+            defaultLanguage={editorLanguage}
+            value={editorContent}
+            onChange={(value) => setEditorContent(value)}
+            options={{
+              selectOnLineNumbers: true,
+              minimap: { enabled: false },
+              fontSize: 14,
+            }}
+          />
         </div>
-        
-
-
+        </div>
       </div>
     </div >
   );
