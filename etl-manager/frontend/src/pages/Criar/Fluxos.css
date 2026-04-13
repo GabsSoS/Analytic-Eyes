@@ -13,11 +13,13 @@ h3 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  width: auto;
+  justify-content: center;
+  width: 100%;
   padding: 20px;
   box-sizing: border-box;
-  margin-top: 100px;
+  margin: 100px auto 0;
+  padding-left: var(--sidebar-padding, 3.125vw);
+  transition: padding-left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .etapa1 {
@@ -30,6 +32,7 @@ h3 {
   border-radius: 10px;
   box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.25);
   padding-bottom: 10px;
+  margin: 0 auto;
 }
 
 .cabecalho {
@@ -68,7 +71,6 @@ h3 {
   box-sizing: border-box;
 }
 
-
 .job {
   display: flex;
   flex-direction: column;
@@ -92,6 +94,10 @@ h3 {
   padding: 8px;
   outline: none;
   box-sizing: border-box;
+  color: #333333;
+  font-family: "irina-sans-regular", sans-serif;
+  font-size: 14px;
+
 }
 
 .Descricao {
@@ -141,6 +147,8 @@ h3 {
   padding: 8px 8px;
   background-color: white;
   box-sizing: border-box;
+  font-family: "irina-sans-regular", sans-serif;
+  font-size: 14px;
 }
 
 .inputs-owners {
@@ -185,7 +193,6 @@ h3 {
   color: #d9534f;
 }
 
-
 @media (min-width: 768px) {
   .container {
     display: flex;
@@ -198,4 +205,110 @@ h3 {
 
   }
 
+}
+
+.etapa2 {
+  display: flex;
+  flex-direction: column;
+  width: 75vw;
+  max-width: 1520px;
+  height: auto;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.25);
+  padding-bottom: 10px;
+  margin: 0 auto;
+}
+
+.upload-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.upload-box {
+  width: 300px;
+  height: 380px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #fcfcfc;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+
+.upload-box:hover {
+  border-color: #b3d1f3;
+  background-color: #f8faff;
+}
+
+.upload-box.drag-active {
+  border-color: #5b9df9;
+  background-color: #f0f4ff;
+  box-shadow: 0 0 0 2px rgba(91, 149, 249, 0.3);
+}
+
+.folder-icon {
+  width: 50px;
+  height: 50px;
+  margin-bottom: 20px;
+}
+
+.upload-button {
+  background-color: #b3d1f3; /* Azul suave do modelo */
+  color: #333;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-family: sans-serif;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-icon {
+  font-size: 16px;
+  opacity: 0.6;
+  width: 15px;
+  height: 15px;
+}
+
+.file-icon img {
+  transform: translateY(-20px);
+}
+
+.selected-files {
+  margin-top: 12px;
+  font-family: "irina-sans-regular", sans-serif;
+  font-size: 14px;
+  color: #333;
+  width: 100%;
+  text-align: center;
+}
+
+/* Esconde o input original */
+#file-upload {
+  display: none;
+}
+
+
+.code-field {
+  width: 55.365vw;
+  height: 42vh;
+  border-radius: 10px;
+  margin-top: 20px;
+  margin-right: 25px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+
+.etp-2 {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
 }

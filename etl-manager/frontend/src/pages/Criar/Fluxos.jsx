@@ -1,9 +1,13 @@
 import "./Fluxos.css";
 import { useState } from "react";
+import FolderIcon from '../../assets/Fluxos/folder .png';
+import FolderMiniIcon from '../../assets/Fluxos/mini file.png';
 
 function Criar() {
   const [coOwners, setCoOwners] = useState([]);
   const [inputValue, setInputValue] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
 
   const ownersList = ["João", "Maria", "Pedro", "Ana"];
 
@@ -22,6 +26,33 @@ function Criar() {
     if (e.key === "Enter") {
       e.preventDefault();
       addCoOwner();
+    }
+  };
+
+  const handleFiles = (files) => {
+    const pyFiles = Array.from(files || []).filter((file) =>
+      file.name.toLowerCase().endsWith(".py")
+    );
+
+    setSelectedFiles(pyFiles);
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    setDragActive(false);
+    handleFiles(event.dataTransfer.files);
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (event) => {
+    event.preventDefault();
+    if (event.target === event.currentTarget) {
+      setDragActive(false);
     }
   };
 
@@ -76,9 +107,54 @@ function Criar() {
           </div>
         </div>
       </div>
+      <div className="etapa2">
+        <div className="cabecalho">
+          <div className="circulo">2</div>
+          <h3>LÓGICA E SCRIPT</h3>
+        </div>
+        <div className="etp-2">
+          <div className="upload-container">
+          <label
+            htmlFor="file-upload"
+            className={`upload-box ${dragActive ? "drag-active" : ""}`}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              setDragActive(true);
+            }}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <img className="folder-icon" src={FolderIcon} alt="Folder Icon" />
 
+            <div className="upload-button">
+              <span className="file-icon">
+                <img src={FolderMiniIcon} alt="File Icon" />
+              </span>{" "}
+              Upload .py Files
+            </div>
+
+            <input
+              id="file-upload"
+              type="file"
+              accept=".py"
+              multiple
+              onChange={(event) => handleFiles(event.target.files)}
+            />
+          </label>
+          {selectedFiles.length > 0 && (
+            <div className="selected-files">
+              Arquivos prontos: {selectedFiles.map((file) => file.name).join(", ")}
+            </div>
+          )}
+        </div>
+        <div className="code-field"></div>
+        </div>
+        
+
+
+      </div>
     </div >
-
   );
 }
 

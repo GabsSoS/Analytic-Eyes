@@ -7,7 +7,7 @@ import CriarAtivo from "../assets/components/Criar Ativa.png";
 import CriarDesativado from "../assets/components/Criar Desativada.png";
 import FluxoAtivo from "../assets/components/Fluxos Ativa.png";
 import FluxoDesativado from "../assets/components/Fluxos Desativada.png";
-import SettingsAtiva from "../assets/components/Settings Ativa.png"
+import SettingsAtiva from "../assets/components/Settings Ativa.png";
 import SettingsDesativado from "../assets/components/Settings Desativada.png";
 
 import "./Sidebar.css";
@@ -17,7 +17,11 @@ function Sidebar() {
   const location = useLocation();
 
   const toggleSidebar = () => {
-    setIsActive(!isActive);
+    const newState = !isActive;
+    setIsActive(newState);
+    // Aumenta o padding quando o sidebar recolhe
+    const paddingValue = newState ? "3.125vw" : "9.50vw";
+    document.documentElement.style.setProperty("--sidebar-padding", paddingValue);
   };
 
 
