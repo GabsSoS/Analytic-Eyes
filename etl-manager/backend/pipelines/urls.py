@@ -20,5 +20,8 @@ urlpatterns = [
     path("pipelines/", views.pipelines, name='list_pipelines'),
     
     # Histórico de execuções de uma pipe específica
-    path("pipelines/<int:pipeline_id>/runs/", views.pipeline_history)
+    path("pipelines/<int:pipeline_id>/runs/", views.pipeline_history),
+
+    # Listagem de usuários
+    path("users/", views.list_users, name='list_users')
 ]

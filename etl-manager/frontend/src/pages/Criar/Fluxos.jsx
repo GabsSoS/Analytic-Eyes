@@ -1,33 +1,44 @@
 import "./Fluxos.css";
-import { useState } from "react";
-import Editor from '@monaco-editor/react';
-import FolderIcon from '../../assets/Fluxos/folder .png';
-import FolderMiniIcon from '../../assets/Fluxos/mini file.png';
+import { useEffect, useRef, useState } from "react";
+import Editor from "@monaco-editor/react";
+import FolderIcon from "../../assets/Fluxos/folder .png";
+import FolderMiniIcon from "../../assets/Fluxos/mini file.png";
+import api from "../../services/api";
 
 function Criar() {
+  const nextLibraryId = useRef(1);
+  const libraryInputRefs = useRef({});
   const [coOwners, setCoOwners] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [editorContent, setEditorContent] = useState("");
   const [editorLanguage, setEditorLanguage] = useState("python");
-
-  const ownersList = ["João", "Maria", "Pedro", "Ana"];
+  const [jobName, setJobName] = useState("");
+  const [description, setDescription] = useState("");
+  const [libraries, setLibraries] = useState([
+    { id: 0, value: "", locked: false },
+  ]);
+  const [pendingFocusId, setPendingFocusId] = useState(0);
+  const [ownersList, setOwnersList] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addCoOwner = () => {
-    if (inputValue.trim() && !coOwners.includes(inputValue.trim())) {
-      setCoOwners([...coOwners, inputValue.trim()]);
+    const trimmedValue = inputValue.trim();
+
+    if (trimmedValue && !coOwners.includes(trimmedValue)) {
+      setCoOwners([...coOwners, trimmedValue]);
       setInputValue("");
     }
   };
 
   const removeCoOwner = (owner) => {
-    setCoOwners(coOwners.filter(item => item !== owner));
+    setCoOwners(coOwners.filter((item) => item !== owner));
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+  const handleKeyPress = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
       addCoOwner();
     }
   };
@@ -37,15 +48,48 @@ function Criar() {
       file.name.toLowerCase().endsWith(".py")
     );
 
-    setSelectedFiles(pyFiles);
-    if (pyFiles.length > 0) {
+    const renamedFiles = pyFiles.map(
+      (file) =>
+        new File([file], "main.py", {
+          type: file.type || "text/x-python",
+          lastModified: file.lastModified,
+        })
+    );
+
+    setSelectedFiles(renamedFiles);
+
+    if (renamedFiles.length > 0) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setEditorContent(e.target.result || "");
+      reader.onload = (event) => {
+        setEditorContent(event.target.result || "");
         setEditorLanguage("python");
       };
-      reader.readAsText(pyFiles[0]);
+      reader.readAsText(renamedFiles[0]);
     }
+  };
+
+  const syncEditorToSelectedFile = (value) => {
+    const nextContent = value ?? "";
+
+    setEditorContent(nextContent);
+    setSelectedFiles((currentFiles) => {
+      if (currentFiles.length === 0) {
+        return [
+          new File([nextContent], "main.py", {
+            type: "text/x-python",
+          }),
+        ];
+      }
+
+      return currentFiles.map((file, index) =>
+        index === 0
+          ? new File([nextContent], "main.py", {
+              type: file.type || "text/x-python",
+              lastModified: Date.now(),
+            })
+          : file
+      );
+    });
   };
 
   const handleDrop = (event) => {
@@ -67,21 +111,164 @@ function Criar() {
     }
   };
 
+  const updateLibrary = (libraryIndex, value) => {
+    setLibraries((currentLibraries) =>
+      currentLibraries.map((library, index) =>
+        index === libraryIndex ? { ...library, value } : library
+      )
+    );
+  };
+
+  const lockLibrary = (libraryIndex) => {
+    setLibraries((currentLibraries) => {
+      const updatedLibraries = currentLibraries.map((library, index) =>
+        index === libraryIndex ? { ...library, locked: true } : library
+      );
+
+      const hasEditableField = updatedLibraries.some((library) => !library.locked);
+
+      if (hasEditableField) {
+        return updatedLibraries;
+      }
+
+      const newLibraryId = nextLibraryId.current++;
+      setPendingFocusId(newLibraryId);
+
+      return [
+        ...updatedLibraries,
+        { id: newLibraryId, value: "", locked: false },
+      ];
+    });
+  };
+
+  const removeLibrary = (libraryIndex) => {
+    setLibraries((currentLibraries) => {
+      if (currentLibraries.length === 1) {
+        return [{ id: currentLibraries[0].id, value: "", locked: false }];
+      }
+
+      return currentLibraries.filter((_, index) => index !== libraryIndex);
+    });
+  };
+
+  const handleLibraryKeyDown = (event, libraryIndex) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+
+      if (libraries[libraryIndex].value.trim()) {
+        lockLibrary(libraryIndex);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get("users/");
+        const users = response.data?.users ?? [];
+        setOwnersList(users.map((user) => user.username));
+      } catch (error) {
+        console.error("Erro ao buscar usuarios:", error);
+        setOwnersList([]);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    if (pendingFocusId === null) {
+      return;
+    }
+
+    const inputToFocus = libraryInputRefs.current[pendingFocusId];
+
+    if (inputToFocus) {
+      inputToFocus.focus();
+      setPendingFocusId(null);
+    }
+  }, [libraries, pendingFocusId]);
+
+  const uploadLabel =
+    selectedFiles.length === 0
+      ? "Upload .py Files"
+      : selectedFiles.length === 1
+        ? selectedFiles[0].name
+        : `${selectedFiles[0].name} +${selectedFiles.length - 1}`;
+
+  const handleCreatePipeline = async () => {
+    const normalizedLibraries = libraries
+      .map((library) => library.value.trim())
+      .filter(Boolean);
+
+    if (!jobName.trim()) {
+      window.alert("Preencha o nome do Job antes de criar o fluxo.");
+      return;
+    }
+
+    if (!editorContent.trim()) {
+      window.alert("Adicione ou escreva um script antes de criar o fluxo.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      const scriptFile =
+        selectedFiles[0] ??
+        new File([editorContent], "main.py", {
+          type: "text/x-python",
+        });
+
+      formData.append("name", jobName.trim());
+      formData.append("description", description.trim());
+      formData.append("lib", JSON.stringify(normalizedLibraries));
+      formData.append("script", scriptFile);
+
+      const response = await api.post("pipelines/create/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      window.alert(`Fluxo criado com sucesso! ID: ${response.data.id}`);
+    } catch (error) {
+      console.error("Erro ao criar fluxo:", error);
+      window.alert(
+        error.response?.data?.error || "Nao foi possivel criar o fluxo."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="container">
       <div className="etapa1">
         <div className="cabecalho">
           <div className="circulo">1</div>
-          <h3>CONFIGURAÇÕES GERAIS</h3>
+          <h3>CONFIGURACOES GERAIS</h3>
         </div>
         <div className="conteudo">
           <div className="job">
             <p className="paragaf">Nome do Job:</p>
-            <input className="inputs-generics" type="text" maxLength="255" />
+            <input
+              className="inputs-generics"
+              type="text"
+              maxLength="255"
+              value={jobName}
+              onChange={(event) => setJobName(event.target.value)}
+            />
           </div>
           <div className="Descricao">
-            <p className="paragaf">Descrição:</p>
-            <textarea className="inputs-desc" maxLength="255"></textarea>
+            <p className="paragaf">Descricao:</p>
+            <textarea
+              className="inputs-desc"
+              maxLength="255"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            ></textarea>
           </div>
           <div className="Co-owners">
             <p className="paragaf">Co-owners:</p>
@@ -95,7 +282,7 @@ function Criar() {
                       onClick={() => removeCoOwner(owner)}
                       type="button"
                     >
-                      ×
+                      x
                     </button>
                   </div>
                 ))}
@@ -104,9 +291,13 @@ function Criar() {
                   className="inputs-owners"
                   type="text"
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={coOwners.length === 0 ? "Digite ou selecione um co-owner" : ""}
+                  onChange={(event) => setInputValue(event.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder={
+                    coOwners.length === 0
+                      ? "Digite ou selecione um co-owner"
+                      : ""
+                  }
                 />
               </div>
               <datalist id="owners">
@@ -118,64 +309,117 @@ function Criar() {
           </div>
         </div>
       </div>
+
       <div className="etapa2">
         <div className="cabecalho">
           <div className="circulo">2</div>
-          <h3>LÓGICA E SCRIPT</h3>
+          <h3>LOGICA E SCRIPT</h3>
         </div>
         <div className="etp-2">
           <div className="upload-container">
-          <label
-            htmlFor="file-upload"
-            className={`upload-box ${dragActive ? "drag-active" : ""}`}
-            onDragEnter={(event) => {
-              event.preventDefault();
-              setDragActive(true);
-            }}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <img className="folder-icon" src={FolderIcon} alt="Folder Icon" />
+            <label
+              htmlFor="file-upload"
+              className={`upload-box ${dragActive ? "drag-active" : ""}`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDragActive(true);
+              }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <img className="folder-icon" src={FolderIcon} alt="Folder Icon" />
 
-            <div className="upload-button">
-              <span className="file-icon">
-                <img src={FolderMiniIcon} alt="File Icon" />
-              </span>{" "}
-              Upload .py Files
-            </div>
+              <div className="upload-button">
+                <span className="file-icon">
+                  <img src={FolderMiniIcon} alt="File Icon" />
+                </span>{" "}
+                {uploadLabel}
+              </div>
 
-            <input
-              id="file-upload"
-              type="file"
-              accept=".py"
-              multiple
-              onChange={(event) => handleFiles(event.target.files)}
+              <input
+                id="file-upload"
+                type="file"
+                accept=".py"
+                multiple
+                onChange={(event) => handleFiles(event.target.files)}
+              />
+            </label>
+          </div>
+          <div className="code-field">
+            <Editor
+              height="400px"
+              defaultLanguage={editorLanguage}
+              value={editorContent}
+              onChange={syncEditorToSelectedFile}
+              options={{
+                selectOnLineNumbers: true,
+                minimap: { enabled: false },
+                fontSize: 14,
+              }}
             />
-          </label>
-          {selectedFiles.length > 0 && (
-            <div className="selected-files">
-              Arquivos prontos: {selectedFiles.map((file) => file.name).join(", ")}
-            </div>
-          )}
-        </div>
-        <div className="code-field">
-          <Editor
-            height="400px"
-            defaultLanguage={editorLanguage}
-            value={editorContent}
-            onChange={(value) => setEditorContent(value)}
-            options={{
-              selectOnLineNumbers: true,
-              minimap: { enabled: false },
-              fontSize: 14,
-            }}
-          />
-        </div>
+          </div>
         </div>
       </div>
-    </div >
+
+      <div className="etapa3">
+        <div className="cabecalho">
+          <div className="circulo">3</div>
+          <h3>BIBLIOTECAS</h3>
+        </div>
+
+        <div className="etapa3-conteudo">
+          <h4 className="libs-title">LISTA DE LIBS</h4>
+
+          <div className="libs-lista">
+            {libraries.map((library, index) => (
+              <div key={library.id} className="lib-item">
+                <label className="lib-label" htmlFor={`library-${index}`}>
+                  Nome da lib:
+                </label>
+                <input
+                  id={`library-${index}`}
+                  className="lib-input"
+                  type="text"
+                  value={library.value}
+                  ref={(element) => {
+                    if (element) {
+                      libraryInputRefs.current[library.id] = element;
+                    } else {
+                      delete libraryInputRefs.current[library.id];
+                    }
+                  }}
+                  onChange={(event) => updateLibrary(index, event.target.value)}
+                  onKeyDown={(event) => handleLibraryKeyDown(event, index)}
+                  placeholder="Digite a biblioteca"
+                  readOnly={library.locked}
+                />
+                <button
+                  type="button"
+                  className="btn-remove-lib"
+                  onClick={() => removeLibrary(index)}
+                  aria-label={`Remover biblioteca ${library.value || index + 1}`}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 6h2v8h-2V9Zm4 0h2v8h-2V9ZM7 9h2v8H7V9Zm-1 11h12l1-13H5l1 13Z" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="btn-criar-fluxo"
+            onClick={handleCreatePipeline}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Criando..." : "Criar Fluxo"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
-export default Criar
+export default Criar;

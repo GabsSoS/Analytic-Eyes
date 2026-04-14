@@ -1,4 +1,4 @@
-
+  
 function Details() {
   return (
     <div>

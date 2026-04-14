@@ -278,3 +278,23 @@ def create_user(request):
         {"message": "Usuário criado com sucesso", "username": user.username},
         status=status.HTTP_201_CREATED
     )
+
+# Listagem de usuários (GET)
+@extend_schema(
+    operation_id='list_users',
+    description='Lista todos os usuários registrados na plataforma (apenas staff)',
+    responses={200: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT}
+)
+@api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def list_users(request):
+    if not request.user.is_staff:
+        return Response(
+            {"error": "Apenas usuários staff podem acessar a lista de usuários"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    users = User.objects.all()
+    data = [{"id": u.id, "username": u.username} for u in users]
+    return Response({"users": data}, status=status.HTTP_200_OK)
