@@ -37,6 +37,7 @@ function Login() {
       console.log("Login bem-sucedido:", res.data);
       // Salva o token
       localStorage.setItem('token', res.data.token);
+      localStorage.setItem('username', email);
       // Redireciona para home
       navigate('/home');
     } catch (err) {

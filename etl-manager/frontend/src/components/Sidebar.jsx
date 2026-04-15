@@ -15,6 +15,7 @@ import "./Sidebar.css";
 function Sidebar() {
   const [isActive, setIsActive] = useState(true);
   const location = useLocation();
+  const currentPath = location.pathname;
 
   const toggleSidebar = () => {
     const newState = !isActive;
@@ -24,9 +25,9 @@ function Sidebar() {
     document.documentElement.style.setProperty("--sidebar-padding", paddingValue);
   };
 
-
-
-  const isCurrentPage = (path) => location.pathname === path;
+  const isCurrentPage = (path) => currentPath === path;
+  const isCriarSection = currentPath === "/criar" || currentPath.startsWith("/editar/");
+  const isFluxosSection = currentPath === "/fluxos" || currentPath.startsWith("/Details/");
 
   return (
     <aside className={isActive ? "active" : "deactivate"}>
@@ -49,19 +50,19 @@ function Sidebar() {
             </Link>
           </li>
 
-          <li className={`container-li ${isCurrentPage("/criar") ? "active-link" : ""}`}>
+          <li className={`container-li ${isCriarSection ? "active-link" : ""}`}>
             <Link to="/criar">
               <img
-                src={isCurrentPage("/criar") ? CriarAtivo  : CriarDesativado}
+                src={isCriarSection ? CriarAtivo  : CriarDesativado}
                 alt="Criar"
               />
               <span>Criar</span>
             </Link>
           </li>
-          <li className={`container-li ${isCurrentPage("/fluxos") ? "active-link" : ""}`}>
+          <li className={`container-li ${isFluxosSection ? "active-link" : ""}`}>
             <Link to="/fluxos">
               <img
-                src={isCurrentPage("/fluxos") ? FluxoAtivo : FluxoDesativado}
+                src={isFluxosSection ? FluxoAtivo : FluxoDesativado}
                 alt="/fluxos"
               />
               <span>Fluxos</span>

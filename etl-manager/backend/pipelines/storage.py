@@ -23,6 +23,11 @@ class PipelineStorage(ABC):
         """Deleta todos os scripts de uma pipeline"""
         pass
 
+    @abstractmethod
+    def rename_pipeline(self, old_pipeline_name: str, new_pipeline_name: str) -> None:
+        """Renomeia a pasta base da pipeline"""
+        pass
+
 
 class LocalStorage(PipelineStorage):
     """Armazena scripts no filesystem local"""
@@ -73,3 +78,17 @@ class LocalStorage(PipelineStorage):
         pipeline_dir = self._get_pipeline_dir(pipeline_name)
         if pipeline_dir.exists():
             shutil.rmtree(pipeline_dir)
+
+    def rename_pipeline(self, old_pipeline_name: str, new_pipeline_name: str) -> None:
+        """Renomeia a pasta da pipeline mantendo os arquivos existentes"""
+        old_pipeline_dir = self._get_pipeline_dir(old_pipeline_name)
+        new_pipeline_dir = self._get_pipeline_dir(new_pipeline_name)
+
+        if not old_pipeline_dir.exists():
+            raise FileNotFoundError(f"Pipeline {old_pipeline_name} nao encontrada")
+
+        if new_pipeline_dir.exists() and old_pipeline_dir != new_pipeline_dir:
+            raise FileExistsError(f"Ja existe uma pipeline com o nome {new_pipeline_name}")
+
+        if old_pipeline_dir != new_pipeline_dir:
+            old_pipeline_dir.rename(new_pipeline_dir)

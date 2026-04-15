@@ -2,7 +2,7 @@ import docker
 import logging
 from celery import shared_task
 from django.utils import timezone
-from .models import PipelineRun
+from .models import Pipeline, PipelineRun
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ def execute_pipeline(run_id):
         run.save()
         
         # PEGA O NOME DA ETL DO PIPELINE
-        etl_name = run.pipeline.etl_name  # Ex: "etl_vendas"
+        etl_name = Pipeline.normalize_pipeline_storage_name(run.pipeline.etl_name)
         
         print(f"Iniciando Docker para ETL: {etl_name}")
         

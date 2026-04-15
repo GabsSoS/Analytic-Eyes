@@ -3,7 +3,8 @@ import Layout from './pages/Layout/Layout'
 import Login from './pages/Login/Login'
 import Home from './pages/Home/Home'
 import Criar from './pages/Criar/Fluxos'
-import Fluxos from './pages/Details/Details'
+import Fluxos from './pages/Fluxos/Listagem'
+import Details from './pages/Details/Details'
 import Settings from './pages/Settings/Settings'
 
 function App() {
@@ -13,9 +14,12 @@ function App() {
       <Route element={<Layout />}>
         <Route path="/home" element={<Home />} />
         <Route path="/criar" element={<Criar />} />
+        <Route path="/editar/:id" element={<Criar />} />
         <Route path="/fluxos" element={<Fluxos />} />
+        <Route path="/Details/:id" element={<Details />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
+      
     </Routes>
   )
 }

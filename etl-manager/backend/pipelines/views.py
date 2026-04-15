@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes
 from rest_framework.authentication import BasicAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -11,8 +11,85 @@ from rest_framework.authtoken.models import Token
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 import json
-from .models import Pipeline, PipelineRun
+from .models import Pipeline, PipelinePermission, PipelineRun, storage
 from .tasks import execute_pipeline
+
+
+def serialize_pipeline_details(pipeline):
+    permissions = PipelinePermission.objects.filter(
+        pipeline=pipeline
+    ).select_related("user")
+    latest_run = (
+        PipelineRun.objects.filter(pipeline=pipeline)
+        .order_by("-created_at")
+        .first()
+    )
+
+    collaborators = [
+        {
+            "id": permission.user.id,
+            "username": permission.user.username,
+            "permission": permission.permission,
+        }
+        for permission in permissions
+        if permission.user_id != pipeline.owner_id
+    ]
+
+    pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
+    try:
+        main_code = storage.get_script(pipeline_name, "main.py")
+    except Exception:
+        main_code = ""
+
+    return {
+        "id": pipeline.id,
+        "name": pipeline.name,
+        "description": pipeline.description,
+        "owner": pipeline.owner.username,
+        "etl_name": pipeline.etl_name,
+        "created_at": pipeline.created_at,
+        "status": latest_run.status if latest_run else "NOT_RUN",
+        "collaborators": collaborators,
+        "main_code": main_code,
+    }
+
+
+def parse_collaborators_payload(raw_collaborators):
+    if raw_collaborators in (None, ""):
+        return None
+
+    if isinstance(raw_collaborators, str):
+        try:
+            raw_collaborators = json.loads(raw_collaborators)
+        except json.JSONDecodeError:
+            raise ValueError("Campo 'collaborators' deve ser um JSON valido")
+
+    if not isinstance(raw_collaborators, list):
+        raise ValueError("Campo 'collaborators' deve ser uma lista")
+
+    collaborators = []
+    for collaborator in raw_collaborators:
+        if not isinstance(collaborator, dict):
+            raise ValueError("Cada colaborador deve ser um objeto")
+
+        username = collaborator.get("username")
+        permission = collaborator.get("permission")
+
+        if not username or not permission:
+            raise ValueError("Cada colaborador precisa de 'username' e 'permission'")
+
+        user = User.objects.filter(username=username).first()
+        if user is None:
+            raise ValueError(f"Usuario colaborador nao encontrado: {username}")
+
+        collaborators.append(
+            {
+                "user": user,
+                "permission": permission,
+            }
+        )
+
+    return collaborators
 
 #view para realizar login
 @api_view(["POST"])
@@ -205,14 +282,78 @@ def get_pipeline(request, pipeline_id):
             status=status.HTTP_403_FORBIDDEN
         )
 
-    data = {
-        "id": pipeline.id,
-        "name": pipeline.name,
-        "description": pipeline.description,
-        "owner": pipeline.owner.username,
-        "etl_name": pipeline.etl_name
-    }
-    return Response(data, status=status.HTTP_200_OK)
+    return Response(serialize_pipeline_details(pipeline), status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    operation_id='update_pipeline',
+    description='Atualiza dados de uma pipeline existente, incluindo nome, status, descricao, colaboradores e codigo base',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline')
+    ],
+    request=OpenApiTypes.OBJECT,
+    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["PUT", "PATCH"])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def update_pipeline(request, pipeline_id):
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
+
+    if not pipeline.can_edit(request.user):
+        return Response(
+            {"error": "Usuario nao tem permissao para editar esta pipe"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    owner_username = request.data.get("owner")
+    owner = None
+    if owner_username is not None:
+        owner = User.objects.filter(username=owner_username).first()
+        if owner is None:
+            return Response(
+                {"error": f"Owner nao encontrado: {owner_username}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    try:
+        collaborators = parse_collaborators_payload(request.data.get("collaborators"))
+        script_file = request.FILES.get("script")
+        main_code = request.data.get("main_code")
+
+        if script_file is not None:
+            if script_file.size > 5_000_000:
+                return Response({"error": "Arquivo maior que 5MB"}, status=status.HTTP_400_BAD_REQUEST)
+            main_code = script_file.read().decode("utf-8")
+
+        next_status = request.data.get("status")
+        if next_status is not None:
+            next_status = str(next_status).upper()
+
+        pipeline.update_pipeline(
+            acting_user=request.user,
+            name=request.data.get("name"),
+            description=request.data.get("description"),
+            owner=owner,
+            status=next_status,
+            collaborators=collaborators,
+            main_code=main_code,
+        )
+    except UnicodeDecodeError:
+        return Response(
+            {"error": "Arquivo nao e UTF-8 valido"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except PermissionError as error:
+        return Response({"error": str(error)}, status=status.HTTP_403_FORBIDDEN)
+    except ValueError as error:
+        return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as error:
+        return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+
+    pipeline.refresh_from_db()
+    return Response(serialize_pipeline_details(pipeline), status=status.HTTP_200_OK)
 
 # Histórico de execuções de uma pipeline específica (GET)
 @extend_schema(
@@ -236,8 +377,15 @@ def pipeline_history(request, pipeline_id):
         )
 
     runs = PipelineRun.history(pipeline_id, request.user)
+    return Response(
+        {
+            "pipeline_id": pipeline_id,
+            "pipeline_name": pipeline.name,
+            "runs": runs,
+        },
+        status=status.HTTP_200_OK,
+    )
     # Se 'runs' já é uma lista/dict serializável, pode retornar direto
-    return Response({f"Pipeline {pipeline_id}": runs}, status=status.HTTP_200_OK)
 
 # Criação de User e autenticação básica (POST)
 @extend_schema(
@@ -298,3 +446,4 @@ def list_users(request):
     users = User.objects.all()
     data = [{"id": u.id, "username": u.username} for u in users]
     return Response({"users": data}, status=status.HTTP_200_OK)
+

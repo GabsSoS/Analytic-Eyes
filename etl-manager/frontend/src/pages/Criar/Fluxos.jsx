@@ -1,11 +1,15 @@
 import "./Fluxos.css";
 import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
+import { useNavigate, useParams } from "react-router-dom";
 import FolderIcon from "../../assets/Fluxos/folder .png";
 import FolderMiniIcon from "../../assets/Fluxos/mini file.png";
 import api from "../../services/api";
 
 function Criar() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = Boolean(id);
   const nextLibraryId = useRef(1);
   const libraryInputRefs = useRef({});
   const [coOwners, setCoOwners] = useState([]);
@@ -22,6 +26,7 @@ function Criar() {
   const [pendingFocusId, setPendingFocusId] = useState(0);
   const [ownersList, setOwnersList] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingPipeline, setIsLoadingPipeline] = useState(false);
 
   const addCoOwner = () => {
     const trimmedValue = inputValue.trim();
@@ -177,6 +182,40 @@ function Criar() {
   }, []);
 
   useEffect(() => {
+    if (!isEditMode) {
+      return;
+    }
+
+    const fetchPipelineDetails = async () => {
+      setIsLoadingPipeline(true);
+
+      try {
+        const response = await api.get(`pipelines/${id}/details/`);
+        const pipeline = response.data ?? {};
+
+        setJobName(pipeline.name ?? "");
+        setDescription(pipeline.description ?? "");
+        setEditorContent(pipeline.main_code ?? "");
+        setEditorLanguage("python");
+        setCoOwners(
+          Array.isArray(pipeline.collaborators)
+            ? pipeline.collaborators
+                .map((collaborator) => collaborator.username)
+                .filter(Boolean)
+            : []
+        );
+      } catch (error) {
+        console.error("Erro ao buscar pipeline para edicao:", error);
+        window.alert("Nao foi possivel carregar a pipeline para edicao.");
+      } finally {
+        setIsLoadingPipeline(false);
+      }
+    };
+
+    fetchPipelineDetails();
+  }, [id, isEditMode]);
+
+  useEffect(() => {
     if (pendingFocusId === null) {
       return;
     }
@@ -196,18 +235,19 @@ function Criar() {
         ? selectedFiles[0].name
         : `${selectedFiles[0].name} +${selectedFiles.length - 1}`;
 
-  const handleCreatePipeline = async () => {
+  const handleSubmitPipeline = async () => {
     const normalizedLibraries = libraries
       .map((library) => library.value.trim())
       .filter(Boolean);
+    const acao = isEditMode ? "salvar" : "criar";
 
     if (!jobName.trim()) {
-      window.alert("Preencha o nome do Job antes de criar o fluxo.");
+      window.alert(`Preencha o nome do Job antes de ${acao} o fluxo.`);
       return;
     }
 
     if (!editorContent.trim()) {
-      window.alert("Adicione ou escreva um script antes de criar o fluxo.");
+      window.alert(`Adicione ou escreva um script antes de ${acao} o fluxo.`);
       return;
     }
 
@@ -223,25 +263,51 @@ function Criar() {
 
       formData.append("name", jobName.trim());
       formData.append("description", description.trim());
-      formData.append("lib", JSON.stringify(normalizedLibraries));
       formData.append("script", scriptFile);
 
-      const response = await api.post("pipelines/create/", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      if (!isEditMode) {
+        formData.append("lib", JSON.stringify(normalizedLibraries));
+      }
 
-      window.alert(`Fluxo criado com sucesso! ID: ${response.data.id}`);
-    } catch (error) {
-      console.error("Erro ao criar fluxo:", error);
+      const response = isEditMode
+        ? await api.put(`pipelines/${id}/update/`, formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          })
+        : await api.post("pipelines/create/", formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          });
+
+      const pipelineId = response.data.id ?? id;
+
       window.alert(
-        error.response?.data?.error || "Nao foi possivel criar o fluxo."
+        isEditMode
+          ? "Fluxo atualizado com sucesso!"
+          : `Fluxo criado com sucesso! ID: ${pipelineId}`
+      );
+      navigate(`/Details/${pipelineId}`);
+    } catch (error) {
+      console.error(
+        isEditMode ? "Erro ao atualizar fluxo:" : "Erro ao criar fluxo:",
+        error
+      );
+      window.alert(
+        error.response?.data?.error ||
+          (isEditMode
+            ? "Nao foi possivel atualizar o fluxo."
+            : "Nao foi possivel criar o fluxo.")
       );
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoadingPipeline) {
+    return <div className="container">Carregando pipeline...</div>;
+  }
 
   return (
     <div className="container">
@@ -411,10 +477,16 @@ function Criar() {
           <button
             type="button"
             className="btn-criar-fluxo"
-            onClick={handleCreatePipeline}
+            onClick={handleSubmitPipeline}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Criando..." : "Criar Fluxo"}
+            {isSubmitting
+              ? isEditMode
+                ? "Salvando..."
+                : "Criando..."
+              : isEditMode
+                ? "Salvar alteracoes"
+                : "Criar Fluxo"}
           </button>
         </div>
       </div>

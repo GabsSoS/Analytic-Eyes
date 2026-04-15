@@ -28,10 +28,26 @@ class Pipeline(models.Model):
 
     def __str__(self):
         return self.name
+
+    @staticmethod
+    def build_pipeline_name(name):
+        return name.strip().lower().replace(" ", "_")
+
+    @staticmethod
+    def normalize_pipeline_storage_name(etl_name):
+        normalized_name = str(etl_name or "").strip().replace("\\", "/")
+
+        while normalized_name.startswith("/"):
+            normalized_name = normalized_name[1:]
+
+        if normalized_name.startswith("etls/"):
+            normalized_name = normalized_name[len("etls/"):]
+
+        return normalized_name.strip("/")
     
     def delete(self, *args, **kwargs):
         """Delete a pipeline e seus scripts"""
-        pipeline_name = self.etl_name.replace("etls/", "")
+        pipeline_name = self.normalize_pipeline_storage_name(self.etl_name)
         try:
             storage.delete_pipeline(pipeline_name)
         except Exception as e:
@@ -52,7 +68,7 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
         if type(lib) != list:
             raise ValueError("Lib deve ser uma lista de strings")
         
-        pipeline_name = name.lower().replace(" ", "_")
+        pipeline_name = cls.build_pipeline_name(name)
         
         try:
             # Salva main.py usando o storage
@@ -74,6 +90,135 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
             etl_name=f'etls/{pipeline_name}',
             owner=user
         )
+
+    def can_edit(self, user):
+        if not user.is_authenticated:
+            return False
+
+        if self.owner == user:
+            return True
+
+        return PipelinePermission.objects.filter(
+            pipeline=self,
+            user=user,
+            permission="edit"
+        ).exists()
+
+    def update_pipeline(
+        self,
+        *,
+        acting_user,
+        name=None,
+        description=None,
+        owner=None,
+        status=None,
+        collaborators=None,
+        main_code=None,
+    ):
+        if not self.can_edit(acting_user):
+            raise PermissionError("Usuario nao tem permissao para editar esta pipe")
+
+        if owner is not None and acting_user != self.owner:
+            raise PermissionError("Apenas o owner pode alterar o proprietario da pipe")
+
+        if collaborators is not None and acting_user != self.owner:
+            raise PermissionError("Apenas o owner pode alterar os colaboradores da pipe")
+
+        current_pipeline_name = self.normalize_pipeline_storage_name(self.etl_name)
+
+        if name is not None:
+            normalized_name = name.strip()
+            if not normalized_name:
+                raise ValueError("O nome da pipeline nao pode ser vazio")
+
+            next_pipeline_name = self.build_pipeline_name(normalized_name)
+            if next_pipeline_name != current_pipeline_name:
+                storage.rename_pipeline(current_pipeline_name, next_pipeline_name)
+                self.etl_name = f"etls/{next_pipeline_name}"
+                current_pipeline_name = next_pipeline_name
+
+            self.name = normalized_name
+
+        if description is not None:
+            self.description = description
+
+        if owner is not None:
+            self.owner = owner
+
+        if main_code is not None:
+            storage.save_script(current_pipeline_name, "main.py", main_code)
+
+        self.save()
+
+        if collaborators is not None:
+            allowed_permissions = {
+                permission[0] for permission in PipelinePermission.PERMISSION_CHOICES
+                if permission[0] != "owner"
+            }
+            desired_permissions = {}
+
+            for collaborator in collaborators:
+                user = collaborator["user"]
+                permission = collaborator["permission"]
+
+                if permission not in allowed_permissions:
+                    raise ValueError(f"Permissao invalida para colaborador: {permission}")
+
+                if user == self.owner:
+                    continue
+
+                desired_permissions[user.id] = {
+                    "user": user,
+                    "permission": permission,
+                }
+
+            existing_permissions = PipelinePermission.objects.filter(pipeline=self)
+
+            for permission in existing_permissions:
+                if permission.user_id not in desired_permissions:
+                    permission.delete()
+
+            for desired_permission in desired_permissions.values():
+                PipelinePermission.objects.update_or_create(
+                    pipeline=self,
+                    user=desired_permission["user"],
+                    defaults={"permission": desired_permission["permission"]},
+                )
+
+        if status is not None:
+            valid_statuses = {choice[0] for choice in PipelineRun.Status.choices}
+            if status not in valid_statuses:
+                raise ValueError("Status invalido para atualizacao da pipeline")
+
+            latest_run = (
+                PipelineRun.objects.filter(pipeline=self)
+                .order_by("-created_at")
+                .first()
+            )
+
+            if latest_run is None:
+                latest_run = PipelineRun.objects.create(
+                    pipeline=self,
+                    triggered_by=acting_user,
+                    status=status,
+                )
+
+            latest_run.status = status
+            if latest_run.started_at is None and status in {
+                PipelineRun.Status.RUNNING,
+                PipelineRun.Status.SUCCESS,
+                PipelineRun.Status.FAILED,
+            }:
+                latest_run.started_at = timezone.now()
+
+            if status in {PipelineRun.Status.SUCCESS, PipelineRun.Status.FAILED}:
+                latest_run.finished_at = timezone.now()
+            elif status in {PipelineRun.Status.PENDING, PipelineRun.Status.RUNNING}:
+                latest_run.finished_at = None
+
+            latest_run.save()
+
+        return self
     
     # Verifica se o usuário é owner ou se tem permição de edição
     def can_execute(self, user):

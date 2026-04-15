@@ -1,0 +1,202 @@
+.fluxos-page {
+  width: 100%;
+  min-height: calc(100vh - 84px);
+  padding: 42px clamp(32px, 4vw, 72px) 32px;
+  box-sizing: border-box;
+  margin-top: 64px;
+}
+
+.fluxos-shell {
+  width: 100%;
+  max-width: min(1480px, calc(100vw - 160px));
+  margin: 0 auto;
+  color: #333333;
+  font-family: "irina-sans-regular", sans-serif;
+}
+
+.fluxos-header h1 {
+  margin: 0 0 18px;
+  font-family: "irina-sans-regular", sans-serif;
+  font-size: clamp(2rem, 1.7rem + 0.8vw, 2.6rem);
+  font-weight: 400;
+  color: #333333;
+}
+
+.fluxos-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid #e3e6eb;
+}
+
+.fluxos-tab {
+  position: relative;
+  border: none;
+  background: transparent;
+  padding: 0 12px 14px;
+  color: #565d68;
+  font-family: "irina-sans-regular", sans-serif;
+  font-size: clamp(0.95rem, 0.88rem + 0.22vw, 1.08rem);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.fluxos-tab:hover {
+  color: #1f2937;
+}
+
+.fluxos-tab.ativa {
+  color: #1f2937;
+}
+
+.fluxos-tab.ativa::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 999px;
+  background: #2f7cf6;
+}
+
+.fluxos-table-wrapper {
+  overflow-x: auto;
+}
+
+.fluxos-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.fluxos-table thead th {
+  padding: 0 clamp(18px, 1.8vw, 30px) 14px;
+  text-align: left;
+  font-size: clamp(1.05rem, 0.96rem + 0.28vw, 1.18rem);
+  font-weight: 400;
+  color: #2c2f36;
+}
+
+.fluxos-table tbody tr {
+  border-top: 1px solid #d9dde3;
+}
+
+.fluxos-row-clickable {
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.fluxos-row-clickable:hover {
+  background-color: #f7faff;
+}
+
+.fluxos-row-clickable:focus-visible {
+  outline: 2px solid #2f7cf6;
+  outline-offset: -2px;
+  background-color: #eef5ff;
+}
+
+.fluxos-table tbody tr:last-child {
+  border-bottom: 1px solid #d9dde3;
+}
+
+.fluxos-table tbody td {
+  padding: 14px clamp(18px, 1.8vw, 30px);
+  font-size: clamp(0.95rem, 0.9rem + 0.18vw, 1.04rem);
+  color: #4b5563;
+  vertical-align: middle;
+}
+
+.fluxos-table th:nth-child(1),
+.fluxos-table td:nth-child(1) {
+  width: 46%;
+}
+
+.fluxos-table th:nth-child(2),
+.fluxos-table td:nth-child(2) {
+  width: 30%;
+}
+
+.fluxos-table th:nth-child(3),
+.fluxos-table td:nth-child(3) {
+  width: 24%;
+}
+
+.fluxos-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  color: #6b7280;
+  font-size: 0.98rem;
+}
+
+@media (min-width: 1440px) {
+  .fluxos-page {
+    padding-top: 54px;
+  }
+
+  .fluxos-tabs {
+    margin-bottom: 32px;
+  }
+
+  .fluxos-table tbody td {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+}
+
+@media (min-width: 1800px) {
+  .fluxos-shell {
+    max-width: min(1640px, calc(100vw - 220px));
+  }
+}
+
+@media (max-width: 768px) {
+  .fluxos-page {
+    padding: 28px 16px 24px;
+  }
+
+  .fluxos-shell {
+    max-width: 100%;
+  }
+
+  .fluxos-tabs {
+    gap: 0;
+    overflow-x: auto;
+  }
+
+  .fluxos-tab {
+    white-space: nowrap;
+  }
+
+  .fluxos-table thead {
+    display: none;
+  }
+
+  .fluxos-table,
+  .fluxos-table tbody,
+  .fluxos-table tr,
+  .fluxos-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .fluxos-table tbody tr {
+    padding: 10px 0;
+  }
+
+  .fluxos-table tbody td {
+    padding: 7px 0;
+  }
+
+  .fluxos-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.86rem;
+    color: #6b7280;
+  }
+}
