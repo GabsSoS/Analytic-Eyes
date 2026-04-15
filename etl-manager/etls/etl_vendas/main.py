@@ -39,3 +39,6 @@ if __name__ == "__main__":
     resultado = executar_etl_vendas(run_id)
     print(f"\nResultado: {resultado}")
     print("funcionando")
+
+
+# teste 1

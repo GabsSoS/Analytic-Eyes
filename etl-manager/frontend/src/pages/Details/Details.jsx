@@ -18,6 +18,14 @@ const DETALHE_INICIAL = {
 
 const PERMISSOES_COLABORADOR = ["edit", "execute", "view"];
 
+const normalizarDetalhes = (dadosDetalhes) => ({
+  ...DETALHE_INICIAL,
+  ...(dadosDetalhes ?? {}),
+  collaborators: Array.isArray(dadosDetalhes?.collaborators)
+    ? dadosDetalhes.collaborators
+    : [],
+});
+
 const formatarDataHora = (valor) => {
   if (!valor) {
     return "Sem informacao";
@@ -119,6 +127,7 @@ function Details() {
   const [usuariosDisponiveis, setUsuariosDisponiveis] = useState([]);
   const [carregandoUsuarios, setCarregandoUsuarios] = useState(false);
   const [carregandoCodigo, setCarregandoCodigo] = useState(false);
+  const [iniciandoPipeline, setIniciandoPipeline] = useState(false);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [salvandoCodigo, setSalvandoCodigo] = useState(false);
   const [erroEdicao, setErroEdicao] = useState("");
@@ -149,13 +158,7 @@ function Details() {
           dadosHistorico?.[`Pipeline ${id}`] ??
           [];
 
-      setDetalhes({
-        ...DETALHE_INICIAL,
-        ...dadosDetalhes,
-        collaborators: Array.isArray(dadosDetalhes?.collaborators)
-          ? dadosDetalhes.collaborators
-          : [],
-      });
+      setDetalhes(normalizarDetalhes(dadosDetalhes));
       setHistorico(Array.isArray(listaRuns) ? listaRuns : []);
     } catch (error) {
       console.error("Erro ao buscar detalhes da pipe:", error);
@@ -312,15 +315,40 @@ function Details() {
     setErroEdicao("");
 
     try {
-      await api.put(`pipelines/${id}/update/`, {
+      const payload = {
         name: nome,
         description: formEdicao.description.trim(),
-        owner: formEdicao.owner.trim() || undefined,
-        collaborators,
-      });
+      };
 
+      if (formEdicao.owner.trim() && formEdicao.owner.trim() !== detalhes.owner) {
+        payload.owner = formEdicao.owner.trim();
+      }
+
+      const colaboradoresAtuais = JSON.stringify(
+        (detalhes.collaborators ?? [])
+          .map((colaborador) => ({
+            username: String(colaborador.username ?? "").trim(),
+            permission: String(colaborador.permission ?? "view").trim(),
+          }))
+          .sort((colaboradorA, colaboradorB) =>
+            colaboradorA.username.localeCompare(colaboradorB.username, "pt-BR")
+          )
+      );
+
+      const colaboradoresEditados = JSON.stringify(
+        [...collaborators].sort((colaboradorA, colaboradorB) =>
+          colaboradorA.username.localeCompare(colaboradorB.username, "pt-BR")
+        )
+      );
+
+      if (colaboradoresEditados !== colaboradoresAtuais) {
+        payload.collaborators = collaborators;
+      }
+
+      const response = await api.put(`pipelines/${id}/update/`, payload);
+
+      setDetalhes(normalizarDetalhes(response.data));
       setModalEdicaoAberto(false);
-      await buscarDados();
     } catch (error) {
       console.error("Erro ao atualizar pipe:", error);
       setErroEdicao(
@@ -344,10 +372,7 @@ function Details() {
 
       setDetalhes((atual) => ({
         ...atual,
-        ...dadosDetalhes,
-        collaborators: Array.isArray(dadosDetalhes?.collaborators)
-          ? dadosDetalhes.collaborators
-          : atual.collaborators,
+        ...normalizarDetalhes(dadosDetalhes),
       }));
       setCodigoPipe(codigoAtual);
 
@@ -372,12 +397,12 @@ function Details() {
     setErroCodigo("");
 
     try {
-      await api.put(`pipelines/${id}/update/`, {
+      const response = await api.put(`pipelines/${id}/update/`, {
         main_code: codigoPipe,
       });
 
+      setDetalhes(normalizarDetalhes(response.data));
       setModalCodigoAberto(false);
-      await buscarDados();
     } catch (error) {
       console.error("Erro ao atualizar codigo da pipe:", error);
       setErroCodigo(
@@ -385,6 +410,23 @@ function Details() {
       );
     } finally {
       setSalvandoCodigo(false);
+    }
+  };
+
+  const iniciarPipeline = async () => {
+    setIniciandoPipeline(true);
+    setErro("");
+
+    try {
+      await api.post(`pipelines/${id}/`);
+      await buscarDados();
+    } catch (error) {
+      console.error("Erro ao iniciar a pipe:", error);
+      setErro(
+        error.response?.data?.error || "Nao foi possivel iniciar a pipeline."
+      );
+    } finally {
+      setIniciandoPipeline(false);
     }
   };
 
@@ -408,6 +450,14 @@ function Details() {
                 <div className="details-card-header">
                   <h1>Detalhes</h1>
                   <div className="details-card-actions">
+                    <button
+                      type="button"
+                      className="details-start-button"
+                      onClick={iniciarPipeline}
+                      disabled={iniciandoPipeline}
+                    >
+                      {iniciandoPipeline ? "Iniciando..." : "Start"}
+                    </button>
                     <button
                       type="button"
                       className="details-link-button"
