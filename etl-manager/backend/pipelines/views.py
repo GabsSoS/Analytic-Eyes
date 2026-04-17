@@ -131,6 +131,73 @@ def user_login(request):
         )
 
 
+# View para obter informações do usuário autenticado (GET)
+@extend_schema(
+    operation_id='user_info',
+    description='Obtém informações do usuário autenticado',
+    responses={200: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT}
+)
+@api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def user_info(request):
+    user = request.user
+    return Response(
+        {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "is_staff": user.is_staff,
+            "is_superuser": user.is_superuser,
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+# View para alterar senha (POST)
+@extend_schema(
+    operation_id='change_password',
+    description='Altera a senha do usuário autenticado',
+    request=OpenApiTypes.OBJECT,
+    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT}
+)
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    if request.method != "POST":
+        return Response(
+            {"error": "Método não permitido"},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    current_password = request.data.get("current_password")
+    new_password = request.data.get("new_password")
+    
+    if not current_password or not new_password:
+        return Response(
+            {"error": "Campos 'current_password' e 'new_password' são obrigatórios"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    user = request.user
+    
+    # Verifica se a senha atual está correta
+    if not user.check_password(current_password):
+        return Response(
+            {"error": "Senha atual está incorreta"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    
+    # Atualiza a senha
+    user.set_password(new_password)
+    user.save()
+    
+    return Response(
+        {"message": "Senha alterada com sucesso"},
+        status=status.HTTP_200_OK
+    )
+
 
 # View para criação de pipeline (POST)
 @extend_schema(

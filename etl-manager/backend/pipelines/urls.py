@@ -5,9 +5,16 @@ urlpatterns = [
 
     # Rota de login
     path("auth/login/", views.user_login, name='login'),
+    
+    # Rota para obter informações do usuário autenticado
+    path("auth/me/", views.user_info, name='user_info'),
+    
+    # Rota de alteração de senha
+    path("auth/change-password/", views.change_password, name='change_password'),
 
-    #Criação de usuário
+    # Criação de usuário (ambos os endpoints para compatibilidade)
     path("users/create/", views.create_user, name='create_user'),
+    path("auth/create-user/", views.create_user, name='create_user_alt'),
 
     # Criação de pipeline
     path("pipelines/create/", views.pipeline_create, name='create_pipeline'),
