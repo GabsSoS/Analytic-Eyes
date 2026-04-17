@@ -171,6 +171,27 @@ def pipeline_create(request):
         # Lê o arquivo e decodifica
         main_code = script_file.read().decode('utf-8') if script_file else main_code
         
+        # Se não foi fornecido código, usar template padrão
+        if not main_code.strip():
+            main_code = '''import sys
+import os
+from datetime import datetime
+
+if __name__ == "__main__":
+    run_id = sys.argv[1] if len(sys.argv) > 1 else "local_test"
+    
+    print(f"[{datetime.now()}] Iniciando ETL: {os.path.basename(os.getcwd())} (Run ID: {run_id})")
+    
+    # TODO: Implemente sua lógica ETL aqui
+    # Exemplo:
+    # - Extrair dados de uma API
+    # - Processar/transformar dados
+    # - Salvar em banco de dados
+    
+    print(f"[{datetime.now()}] ETL concluída com sucesso!")
+    print(f"Run ID: {run_id}")
+'''
+        
         # Validação: arquivo muito grande?
         if script_file and script_file.size > 5_000_000:  # 5MB
             return Response(
@@ -248,15 +269,31 @@ def trigger_pipeline(request, pipeline_id):
 def pipelines(request):
     try:
         pipes = Pipeline.pipeline_list(request.user)
-        data = [
-            {
+        data = []
+        
+        for p in pipes:
+            # Buscar última execução
+            last_run = PipelineRun.objects.filter(pipeline=p).order_by('-created_at').first()
+            
+            pipeline_data = {
                 "id": p.id,
                 "name": p.name,
                 "owner": p.owner.username
             }
-            for p in pipes
-        ]
-        return Response({"pipelines": data}, status=status.HTTP_200_OK)
+            
+            if last_run:
+                pipeline_data["last_run"] = {
+                    "status": last_run.status,
+                    "started_at": last_run.started_at,
+                    "finished_at": last_run.finished_at
+                }
+            
+            data.append(pipeline_data)
+        
+        return Response({
+            "pipelines": data,
+            "current_user": request.user.username
+        }, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -276,7 +313,7 @@ def get_pipeline(request, pipeline_id):
 
     pipeline = get_object_or_404(Pipeline, id=pipeline_id)
 
-    if not pipeline.can_execute(request.user):
+    if not (pipeline.can_execute(request.user) or pipeline.can_edit(request.user)):
         return Response(
             {"error": "Usuário não tem permissão para acessar esta pipe"},
             status=status.HTTP_403_FORBIDDEN

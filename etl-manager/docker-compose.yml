@@ -48,6 +48,7 @@ services:
       - "8000:8000"
     environment:
       - DEBUG=True
+      - ETL_PATH=${ETL_PATH}
     depends_on:
       - redis
       - postgres
@@ -62,6 +63,8 @@ services:
       - ./backend:/app
       - ./etls:/etls
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - ETL_PATH=${ETL_PATH}
     depends_on:
       - redis
       - postgres

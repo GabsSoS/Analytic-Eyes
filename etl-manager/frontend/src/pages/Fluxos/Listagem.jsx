@@ -29,15 +29,42 @@ const normalizarTexto = (valor) =>
     .trim()
     .toLowerCase();
 
+const formatarUltimaExecucao = (lastRun) => {
+  if (!lastRun || !lastRun.started_at) {
+    return "Nunca executada";
+  }
+
+  const dataExecucao = new Date(lastRun.started_at);
+  const agora = new Date();
+  const diffMs = agora - dataExecucao;
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMin < 1) {
+    return "Agora mesmo";
+  } else if (diffMin < 60) {
+    return `Há ${diffMin} minuto${diffMin > 1 ? 's' : ''}`;
+  } else if (diffHoras < 24) {
+    return `Há ${diffHoras} hora${diffHoras > 1 ? 's' : ''}`;
+  } else if (diffDias < 7) {
+    return `Há ${diffDias} dia${diffDias > 1 ? 's' : ''}`;
+  } else if (diffDias < 30) {
+    const semanas = Math.floor(diffDias / 7);
+    return `Há ${semanas} semana${semanas > 1 ? 's' : ''}`;
+  } else if (diffDias < 365) {
+    const meses = Math.floor(diffDias / 30);
+    return `Há ${meses} mês${meses > 1 ? 'es' : ''}`;
+  } else {
+    const anos = Math.floor(diffDias / 365);
+    return `Há ${anos} ano${anos > 1 ? 's' : ''}`;
+  }
+};
+
 const normalizarFluxo = (fluxo, index) => ({
   id: fluxo.id ?? `${fluxo.nome ?? fluxo.name ?? "fluxo"}-${index}`,
   nome: fluxo.nome ?? fluxo.name ?? "Fluxo sem nome",
-  ultimaExecucao:
-    fluxo.ultimaExecucao ??
-    fluxo.ultima_execucao ??
-    fluxo.lastRun ??
-    fluxo.last_run ??
-    "Sem execucao",
+  ultimaExecucao: formatarUltimaExecucao(fluxo.last_run),
   proprietario:
     fluxo.proprietario ??
     fluxo.owner ??
@@ -48,46 +75,47 @@ const normalizarFluxo = (fluxo, index) => ({
 function Fluxos() {
   const navigate = useNavigate();
   const [abaAtiva, setAbaAtiva] = useState(ABAS.meus);
-  const [fluxos, setFluxos] = useState(FLUXOS_MOCKADOS);
+  const [fluxos, setFluxos] = useState([]);
   const [usuarioAtual, setUsuarioAtual] = useState(
-    localStorage.getItem("username") || "Lucas Souza"
+    localStorage.getItem("username") || ""
   );
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
     const buscarFluxos = async () => {
       setCarregando(true);
+      console.log("Iniciando busca de fluxos...");
 
       try {
         const response = await api.get("pipelines/");
         const payload = response.data;
-        const listaRecebida = Array.isArray(payload)
-          ? payload
-          : payload?.results ?? payload?.pipelines ?? payload?.fluxos ?? [];
+        const listaRecebida = payload?.pipelines ?? [];
+        console.log("Resposta da API:", payload);
 
-        if (Array.isArray(listaRecebida) && listaRecebida.length > 0) {
-          setFluxos(listaRecebida.map(normalizarFluxo));
-        }
+        const fluxosNormalizados = Array.isArray(listaRecebida)
+          ? listaRecebida.map(normalizarFluxo)
+          : [];
 
-        const usuarioDaApi =
-          payload?.currentUser ??
-          payload?.current_user ??
-          payload?.user ??
-          payload?.username;
+        console.log("Fluxos recebidos da API:", listaRecebida);
+        console.log("Fluxos normalizados:", fluxosNormalizados);
+        setFluxos(fluxosNormalizados);
 
+        const usuarioDaApi = payload?.current_user;
+        console.log("Usuário atual da API:", usuarioDaApi);
         if (usuarioDaApi) {
           setUsuarioAtual(usuarioDaApi);
           localStorage.setItem("username", usuarioDaApi);
         }
       } catch (error) {
         console.error("Erro ao buscar fluxos:", error);
+        setFluxos([]);
       } finally {
         setCarregando(false);
       }
     };
 
     buscarFluxos();
-  }, []);
+  }, [navigate]);
 
   const fluxosFiltrados = useMemo(() => {
     const usuarioNormalizado = normalizarTexto(usuarioAtual);

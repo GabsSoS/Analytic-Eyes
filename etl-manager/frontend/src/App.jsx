@@ -6,18 +6,20 @@ import Criar from './pages/Criar/Fluxos'
 import Fluxos from './pages/Fluxos/Listagem'
 import Details from './pages/Details/Details'
 import Settings from './pages/Settings/Settings'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
       <Route element={<Layout />}>
-        <Route path="/home" element={<Home />} />
-        <Route path="/criar" element={<Criar />} />
-        <Route path="/editar/:id" element={<Criar />} />
-        <Route path="/fluxos" element={<Fluxos />} />
-        <Route path="/Details/:id" element={<Details />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+        <Route path="/criar" element={<ProtectedRoute><Criar /></ProtectedRoute>} />
+        <Route path="/editar/:id" element={<ProtectedRoute><Criar /></ProtectedRoute>} />
+        <Route path="/fluxos" element={<ProtectedRoute><Fluxos /></ProtectedRoute>} />
+        <Route path="/Details/:id" element={<ProtectedRoute><Details /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       </Route>
       
     </Routes>

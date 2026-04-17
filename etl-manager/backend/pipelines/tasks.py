@@ -1,5 +1,6 @@
 import docker
 import logging
+import os
 from celery import shared_task
 from django.utils import timezone
 from .models import Pipeline, PipelineRun
@@ -25,18 +26,24 @@ def execute_pipeline(run_id):
         # Conecta ao Docker
         client = docker.from_env()
         
+        # DEFINE O CAMINHO DAS ETLs
+        etl_path = os.getenv("ETL_PATH", "/etls")
+        
         # EXECUTA O CONTAINER
         try:
             logs = client.containers.run(
-                image="etls:latest",  # Imagem que você vai fazer build
-                command=[etl_name, str(run_id)],  # Args: etl_vendas 123
+                image="etls:latest",
+                command=[etl_name, str(run_id)],
                 environment={
                     "RUN_ID": str(run_id),
                     "DB_HOST": "postgres",
                     "REDIS_URL": "redis://redis:6379",
                 },
+                volumes={
+                    etl_path: {"bind": "/etls", "mode": "rw"}
+                },
                 network="etl-manager_default",
-                remove=True  # Remove container após terminar
+                remove=True
             )
             
             # Converte bytes para string

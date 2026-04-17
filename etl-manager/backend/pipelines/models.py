@@ -220,7 +220,7 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
 
         return self
     
-    # Verifica se o usuário é owner ou se tem permição de edição
+    # Verifica se o usuário é owner ou se tem permição de edição ou execução
     def can_execute(self, user):
 
         # Verifica se o usuário esta logado
@@ -231,11 +231,11 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
         if self.owner == user:
             return True
 
-        # Verifica se o usuário mesmo não sendo dono da pipe tem permissão de execute
+        # Verifica se o usuário mesmo não sendo dono da pipe tem permissão de execute ou edit
         return PipelinePermission.objects.filter(
             pipeline=self,
             user=user,
-            permission="execute"
+            permission__in=["execute", "edit"]
         ).exists()
 
     @classmethod
@@ -246,7 +246,7 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
         return cls.objects.filter(
             Q(owner=user) |
             Q(pipelinepermission__user=user,
-            pipelinepermission__permission="execute")
+            pipelinepermission__permission__in=["execute", "edit", "view"])
         ).distinct()
 
     # Execução de fluxo

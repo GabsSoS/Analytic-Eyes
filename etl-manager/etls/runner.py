@@ -1,11 +1,11 @@
 import sys
 import os
-import importlib.util
+import subprocess
 from pathlib import Path
 
 def executar_etl(etl_name, run_id):
     """
-    Carrega e executa uma ETL dinamicamente
+    Executa uma ETL executando seu main.py diretamente
     """
     # Define o caminho da ETL
     etl_dir = Path(__file__).parent / etl_name
@@ -15,20 +15,30 @@ def executar_etl(etl_name, run_id):
         print(f" ETL não encontrada: {etl_name}")
         sys.exit(1)
     
-    # Adiciona a pasta da ETL ao path
-    sys.path.insert(0, str(etl_dir))
-    
-    # Importa o módulo dinamicamente
-    spec = importlib.util.spec_from_file_location("etl_main", main_file)
-    etl_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(etl_module)
-    
-    # Executa a função principal da ETL
+    # Executa o script Python diretamente
     print(f" Executando ETL: {etl_name} (Run ID: {run_id})")
-    resultado = etl_module.executar_etl_vendas(run_id)  # ou o nome da função
-    print(f" ETL {etl_name} finalizada com sucesso!")
-    
-    return resultado
+    try:
+        result = subprocess.run(
+            [sys.executable, str(main_file), run_id],
+            cwd=str(etl_dir),
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutos timeout
+        )
+        print(result.stdout)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+        if result.returncode != 0:
+            print(f" ETL {etl_name} falhou com código {result.returncode}")
+            sys.exit(result.returncode)
+        print(f" ETL {etl_name} finalizada com sucesso!")
+        return {"status": "success"}
+    except subprocess.TimeoutExpired:
+        print(f" ETL {etl_name} expirou o tempo limite")
+        sys.exit(1)
+    except Exception as e:
+        print(f" Erro ao executar ETL {etl_name}: {str(e)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
