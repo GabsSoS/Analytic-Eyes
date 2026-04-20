@@ -23,9 +23,11 @@ urlpatterns = [
     path("pipelines/<int:pipeline_id>/", views.trigger_pipeline, name='execute_pipeline'),
     path("pipelines/<int:pipeline_id>/details/", views.get_pipeline, name='get_pipeline'),
     path("pipelines/<int:pipeline_id>/update/", views.update_pipeline, name='update_pipeline'),
+    path("pipelines/<int:pipeline_id>/delete/", views.pipeline_delete, name='delete_pipeline'),
    
     # Listagem de pipes
     path("pipelines/", views.pipelines, name='list_pipelines'),
+    path("pipelines/stats/", views.pipelines_stats, name='pipelines_stats'),
     
     # Histórico de execuções de uma pipe específica
     path("pipelines/<int:pipeline_id>/runs/", views.pipeline_history),

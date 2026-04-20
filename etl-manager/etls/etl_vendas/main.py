@@ -24,6 +24,7 @@ def executar_etl_vendas(run_id):
         for d in dados
     ]
     
+
     # Carregamento (salva em arquivo, banco, API, etc)
     print("💾 Carregando dados...")
     time.sleep(1)
@@ -42,3 +43,5 @@ if __name__ == "__main__":
 
 
 # teste 1
+
+# MUDEI ISSO AGORA

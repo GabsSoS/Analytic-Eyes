@@ -1,7 +1,7 @@
 import "./Details.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
 const DETALHE_INICIAL = {
@@ -117,6 +117,7 @@ const obterStatusVisual = (status) => {
 
 function Details() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [detalhes, setDetalhes] = useState(DETALHE_INICIAL);
   const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -124,6 +125,11 @@ function Details() {
   const [modalHistoricoAberto, setModalHistoricoAberto] = useState(false);
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const [modalCodigoAberto, setModalCodigoAberto] = useState(false);
+  const [modalDeleteAberto, setModalDeleteAberto] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
   const [usuariosDisponiveis, setUsuariosDisponiveis] = useState([]);
   const [carregandoUsuarios, setCarregandoUsuarios] = useState(false);
   const [carregandoCodigo, setCarregandoCodigo] = useState(false);
@@ -171,6 +177,22 @@ function Details() {
   useEffect(() => {
     buscarDados();
   }, [buscarDados]);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadUser() {
+      try {
+        const res = await api.get("auth/me/");
+        if (!mounted) return;
+        setCurrentUser(res.data?.username ?? null);
+      } catch (err) {
+        // não fatal — apenas não mostrar botão de delete
+      }
+    }
+
+    loadUser();
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     if (!modalCodigoAberto) {
@@ -430,6 +452,31 @@ function Details() {
     }
   };
 
+  const confirmarDelete = () => {
+    if (!detalhes?.name) return false;
+    return String(deleteConfirmText ?? "").trim() === String(detalhes.name ?? "");
+  };
+
+  const deletarPipeline = async () => {
+    if (!confirmarDelete()) {
+      setDeleteError("Digite o nome exato da pipeline para confirmar a exclusao.");
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError("");
+
+    try {
+      await api.post(`pipelines/${id}/delete/`, { confirm_name: detalhes.name });
+      navigate("/fluxos");
+    } catch (error) {
+      console.error("Erro ao deletar pipeline:", error);
+      setDeleteError(error.response?.data?.error || 'Nao foi possivel deletar a pipeline.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <section className="details-page">
       <div className="details-shell">
@@ -472,6 +519,15 @@ function Details() {
                     >
                       Edit
                     </button>
+                                {currentUser && detalhes.owner === currentUser && (
+                                  <button
+                                    type="button"
+                                    className="details-delete-button"
+                                    onClick={() => { setDeleteError(""); setDeleteConfirmText(""); setModalDeleteAberto(true); }}
+                                  >
+                                    Delete
+                                  </button>
+                                )}
                   </div>
                 </div>
 
@@ -853,7 +909,7 @@ function Details() {
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="details-code-modal-title"
+            aria-labelledby="details-code-modal-title"  
           >
             <div className="details-card-header">
               <h2 id="details-code-modal-title">Editar codigo da pipe</h2>
@@ -914,6 +970,78 @@ function Details() {
                     disabled={salvandoCodigo || carregandoCodigo}
                   >
                     {salvandoCodigo ? "Salvando..." : "Salvar codigo"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalDeleteAberto && (
+        <div
+          className="details-modal-overlay"
+          onClick={() => setModalDeleteAberto(false)}
+          role="presentation"
+        >
+          <div
+            className="details-modal details-edit-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="details-delete-modal-title"
+          >
+            <div className="details-card-header">
+              <h2 id="details-delete-modal-title">Excluir pipeline</h2>
+              <button
+                type="button"
+                className="details-modal-close"
+                onClick={() => setModalDeleteAberto(false)}
+                aria-label="Fechar modal de exclusao"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="details-modal-body">
+              <div className="details-edit-form">
+                <p>
+                  Esta acao ira <strong>deletar permanentemente</strong> a pipeline.
+                  Para confirmar, digite o nome da pipeline abaixo e clique em
+                  <strong> Confirmar exclusao</strong>.
+                </p>
+
+                {deleteError && (
+                  <div className="details-feedback error details-edit-feedback">
+                    {deleteError}
+                  </div>
+                )}
+
+                <label className="details-edit-field">
+                  <span>Nome da pipeline</span>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder={`Digite: ${detalhes.name || "nome-da-pipe"}`}
+                  />
+                </label>
+
+                <div className="details-edit-actions">
+                  <button
+                    type="button"
+                    className="details-edit-secondary"
+                    onClick={() => setModalDeleteAberto(false)}
+                    disabled={deleting}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="details-delete-primary"
+                    onClick={deletarPipeline}
+                    disabled={deleting}
+                  >
+                    {deleting ? "Excluindo..." : "Confirmar exclusao"}
                   </button>
                 </div>
               </div>

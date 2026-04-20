@@ -57,14 +57,16 @@ services:
 
   worker:
     build: ./backend
-    container_name: etl-worker
-    command: celery -A config worker -l info
+    command: sh -c "celery -A config worker -l info --concurrency=5 --prefetch-multiplier=1 -Ofair --max-tasks-per-child=50"
     volumes:
       - ./backend:/app
       - ./etls:/etls
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - ETL_PATH=${ETL_PATH}
+      - CELERY_WORKER_CONCURRENCY=5
+      - ETL_CONTAINER_MEM_LIMIT=512m
+      - ETL_CONTAINER_CPUSET=
     depends_on:
       - redis
       - postgres

@@ -168,6 +168,14 @@
   cursor: pointer;
 }
 
+.details-delete-button {
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  font-size: 0.96rem;
+  cursor: pointer;
+}
+
 .details-start-button {
   border: 1px solid #2f7cf6;
   background: #2f7cf6;
@@ -472,6 +480,12 @@
   border: 1px solid #d0d7e2;
   background: #ffffff;
   color: #374151;
+}
+
+.details-delete-primary {
+  border: 1px solid #ef4444;
+  background: #ef4444;
+  color: #ffffff;
 }
 
 .details-edit-primary {

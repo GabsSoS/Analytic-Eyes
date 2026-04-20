@@ -13,6 +13,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 import json
 from .models import Pipeline, PipelinePermission, PipelineRun, storage
 from .tasks import execute_pipeline
+from django.db.models import Count
 
 
 def serialize_pipeline_details(pipeline):
@@ -534,20 +535,100 @@ def create_user(request):
 # Listagem de usuários (GET)
 @extend_schema(
     operation_id='list_users',
-    description='Lista todos os usuários registrados na plataforma (apenas staff)',
-    responses={200: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT}
+    description='Lista usuários registrados na plataforma (autenticado). Usado para selecionar owners/colaboradores.',
+    responses={200: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT}
 )
 @api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def list_users(request):
-    if not request.user.is_staff:
-        return Response(
-            {"error": "Apenas usuários staff podem acessar a lista de usuários"},
-            status=status.HTTP_403_FORBIDDEN
-        )
+    # Permitir que qualquer usuário autenticado liste nomes de usuários
+    # Retornamos apenas campos mínimos (id e username) para uso em seleção de colaboradores
+    q = request.query_params.get("q")
+    qs = User.objects.all()
+    if q:
+        qs = qs.filter(username__icontains=q)
 
-    users = User.objects.all()
-    data = [{"id": u.id, "username": u.username} for u in users]
+    data = [{"id": u.id, "username": u.username} for u in qs.order_by("username")[:200]]
     return Response({"users": data}, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    operation_id='pipelines_stats',
+    description='Retorna estatísticas resumidas das pipelines visíveis ao usuário',
+    responses={200: OpenApiTypes.OBJECT, 401: OpenApiTypes.OBJECT}
+)
+@api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def pipelines_stats(request):
+    user = request.user
+
+    # Pipelines visíveis ao usuário
+    visible_qs = Pipeline.pipeline_list(user)
+    total_visible = visible_qs.count()
+
+    # Quantas pipelines o usuário é owner
+    owned_count = Pipeline.objects.filter(owner=user).count()
+
+    # Quantas são compartilhadas (visíveis mas não owned)
+    shared_count = visible_qs.exclude(owner=user).count()
+
+    # Contagem por status da última execução
+    status_counts = {"PENDING": 0, "RUNNING": 0, "SUCCESS": 0, "FAILED": 0, "NOT_RUN": 0}
+    for p in visible_qs:
+        last_run = PipelineRun.objects.filter(pipeline=p).order_by('-created_at').first()
+        if last_run:
+            st = last_run.status
+        else:
+            st = "NOT_RUN"
+
+        status_counts[st] = status_counts.get(st, 0) + 1
+
+    return Response(
+        {
+            "total_visible": total_visible,
+            "owned_count": owned_count,
+            "shared_count": shared_count,
+            "status_counts": status_counts,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@extend_schema(
+    operation_id='delete_pipeline',
+    description='Deleta uma pipeline. Apenas o owner pode deletar. É necessário confirmar o nome da pipeline no corpo da requisição usando o campo `confirm_name`. Aceita POST ou DELETE.',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline')
+    ],
+    request=OpenApiTypes.OBJECT,
+    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["POST", "DELETE"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def pipeline_delete(request, pipeline_id):
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
+
+    # Apenas o owner pode deletar
+    if pipeline.owner != request.user:
+        return Response({"error": "Apenas o owner pode deletar esta pipeline"}, status=status.HTTP_403_FORBIDDEN)
+
+    # Confirmação pelo nome
+    confirm_name = None
+    if request.method == "DELETE":
+        # DELETE pode enviar body dependendo do cliente; DRF permite request.data
+        confirm_name = request.data.get("confirm_name")
+    else:
+        confirm_name = request.data.get("confirm_name")
+
+    if not confirm_name or str(confirm_name).strip() != pipeline.name:
+        return Response({"error": "Confirmação inválida. Informe o nome exato da pipeline no campo 'confirm_name'."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        pipeline.delete()
+        return Response({"message": "Pipeline deletada com sucesso"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

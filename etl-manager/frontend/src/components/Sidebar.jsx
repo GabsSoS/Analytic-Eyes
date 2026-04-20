@@ -46,7 +46,7 @@ function Sidebar() {
                 alt="Home"
                 className="icons-final"
               />
-              <span>Home</span>
+              <span>Tela inicial</span>
             </Link>
           </li>
 
