@@ -659,5 +659,4 @@ def pipeline_delete(request, pipeline_id):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def link_pipeline(request, pipeline_id):
- 
     pass
