@@ -56,7 +56,7 @@ function Home() {
     <div className="home-page">
       <section className="hero">
         <div className="hero-content">
-          <h1 className="hero-title">Orquestrar pipelines e automações nunca foi tão fácil</h1>
+          <h1 className="hero-title">Orquestrar fluxos e automações nunca foi tão fácil</h1>
           <p className="hero-sub">Maximize a produtividade e simplifique a administração sem comprometer o gerenciamento e a segurança</p>
         </div>
 
@@ -70,12 +70,12 @@ function Home() {
           <h3 className="card-title">Status</h3>
           <div className="status-body">
               <div className="status-left">
-                <div className="status-meta">Pipelines criadas</div>
+                <div className="status-meta">Fluxos criados</div>
                 <div className="status-number">{stats.owned_count}</div>
                 <div className="status-small">Visíveis: {stats.total_visible} · Compartilhadas: {stats.shared_count}</div>
               </div>
               <div className="status-bars">
-                <div className="bar" style={{ height: getHeight(statusCounts.NOT_RUN), background: '#e5e7eb' }} title={`Não executadas: ${statusCounts.NOT_RUN || 0}`}></div>
+                <div className="bar" style={{ height: getHeight(statusCounts.NOT_RUN), background: '#e5e7eb' }} title={`Não executados: ${statusCounts.NOT_RUN || 0}`}></div>
                 <div className="bar" style={{ height: getHeight(statusCounts.PENDING), background: '#f59e0b' }} title={`Pendente: ${statusCounts.PENDING || 0}`}></div>
                 <div className="bar" style={{ height: getHeight(statusCounts.RUNNING), background: '#60a5fa' }} title={`Em execução: ${statusCounts.RUNNING || 0}`}></div>
                 <div className="bar" style={{ height: getHeight(statusCounts.SUCCESS), background: '#10b981' }} title={`Sucesso: ${statusCounts.SUCCESS || 0}`}></div>
@@ -93,10 +93,10 @@ function Home() {
           <h3 className="card-title">Destaques</h3>
           <div className="highlights">
             <div className="highlight">
-              <div className="icon"><img src={IdeaIcon} alt="Ideia" /></div>
+                <div className="icon"><img src={IdeaIcon} alt="Ideia" /></div>
               <div className="highlight-text">
                 <strong>Novas atualizações mensais no sistema</strong>
-                <p>O sistema de orquestração de pipelines foi atualizado com melhorias que incluem monitoramento em tempo real, centralização de logs e integração simplificada com serviços de nuvem.</p>
+                <p>O sistema de orquestração de fluxos foi atualizado com melhorias que incluem monitoramento em tempo real, centralização de logs e integração simplificada com serviços de nuvem.</p>
               </div>
             </div>
 

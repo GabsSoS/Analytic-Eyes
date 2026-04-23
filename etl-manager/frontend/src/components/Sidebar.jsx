@@ -20,7 +20,7 @@ function Sidebar() {
   const toggleSidebar = () => {
     const newState = !isActive;
     setIsActive(newState);
-    // Aumenta o padding quando o sidebar recolhe
+    // Ajusta o espaçamento quando a barra lateral é recolhida
     const paddingValue = newState ? "3.125vw" : "9.50vw";
     document.documentElement.style.setProperty("--sidebar-padding", paddingValue);
   };
@@ -34,7 +34,7 @@ function Sidebar() {
       <nav className="sidebar">
         <img
           src={Menu}
-          alt="Recolher Menu"
+          alt="Recolher menu"
           className="icons"
           onClick={toggleSidebar}
         />
@@ -43,10 +43,10 @@ function Sidebar() {
             <Link to="/home">
               <img
                 src={isCurrentPage("/home") ? HomeAtiva : HomeInativa}
-                alt="Home"
+                alt="Início"
                 className="icons-final"
               />
-              <span>Tela inicial</span>
+              <span>Início</span>
             </Link>
           </li>
 
@@ -63,7 +63,7 @@ function Sidebar() {
             <Link to="/fluxos">
               <img
                 src={isFluxosSection ? FluxoAtivo : FluxoDesativado}
-                alt="/fluxos"
+                alt="Fluxos"
               />
               <span>Fluxos</span>
             </Link>
@@ -72,7 +72,7 @@ function Sidebar() {
             <Link to="/settings">
                 <img
                 src={isCurrentPage("/settings") ? SettingsAtiva : SettingsDesativado}
-                alt="/settings"
+                alt="Configurações"
               />
               <span>Configurações</span>
             </Link>

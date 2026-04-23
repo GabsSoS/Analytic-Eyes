@@ -17,6 +17,11 @@ const DETALHE_INICIAL = {
 };
 
 const PERMISSOES_COLABORADOR = ["edit", "execute", "view"];
+const PERMISSOES_LABELS = {
+  edit: "Editar",
+  execute: "Executar",
+  view: "Visualizar",
+};
 
 const normalizarDetalhes = (dadosDetalhes) => ({
   ...DETALHE_INICIAL,
@@ -28,13 +33,13 @@ const normalizarDetalhes = (dadosDetalhes) => ({
 
 const formatarDataHora = (valor) => {
   if (!valor) {
-    return "Sem informacao";
+    return "Sem informação";
   }
 
   const data = new Date(valor);
 
   if (Number.isNaN(data.getTime())) {
-    return "Sem informacao";
+    return "Sem informação";
   }
 
   return new Intl.DateTimeFormat("pt-BR", {
@@ -48,13 +53,13 @@ const formatarDataHora = (valor) => {
 
 const formatarInicioExecucao = (valor) => {
   if (!valor) {
-    return "Nao iniciado";
+    return "Não iniciado";
   }
 
   const data = new Date(valor);
 
   if (Number.isNaN(data.getTime())) {
-    return "Nao iniciado";
+    return "Não iniciado";
   }
 
   return new Intl.DateTimeFormat("pt-BR", {
@@ -74,7 +79,7 @@ const formatarDuracao = (inicio, fim) => {
   const fimData = fim ? new Date(fim) : new Date();
 
   if (Number.isNaN(inicioData.getTime()) || Number.isNaN(fimData.getTime())) {
-    return "Sem informacao";
+    return "Sem informação";
   }
 
   const diferencaMs = Math.max(fimData.getTime() - inicioData.getTime(), 0);
@@ -97,11 +102,11 @@ const obterStatusVisual = (status) => {
   const statusNormalizado = String(status ?? "").toUpperCase();
 
   if (statusNormalizado === "SUCCESS") {
-    return { label: "Sucesso", classe: "success", resumo: "On" };
+    return { label: "Sucesso", classe: "success", resumo: "Sucesso" };
   }
 
   if (statusNormalizado === "RUNNING") {
-    return { label: "Executando", classe: "running", resumo: "On" };
+    return { label: "Executando", classe: "running", resumo: "Executando" };
   }
 
   if (statusNormalizado === "FAILED") {
@@ -112,7 +117,7 @@ const obterStatusVisual = (status) => {
     return { label: "Pendente", classe: "pending", resumo: "Pendente" };
   }
 
-  return { label: "Sem execucao", classe: "idle", resumo: "Sem execucao" };
+  return { label: "Sem execução", classe: "idle", resumo: "Sem execução" };
 };
 
 function Details() {
@@ -167,8 +172,8 @@ function Details() {
       setDetalhes(normalizarDetalhes(dadosDetalhes));
       setHistorico(Array.isArray(listaRuns) ? listaRuns : []);
     } catch (error) {
-      console.error("Erro ao buscar detalhes da pipe:", error);
-      setErro("Nao foi possivel carregar os detalhes da pipe.");
+      console.error("Erro ao buscar detalhes do fluxo:", error);
+      setErro("Não foi possível carregar os detalhes do fluxo.");
     } finally {
       setCarregando(false);
     }
@@ -312,7 +317,7 @@ function Details() {
     const nome = formEdicao.name.trim();
 
     if (!nome) {
-      setErroEdicao("Preencha o nome da pipe antes de salvar.");
+      setErroEdicao("Preencha o nome do fluxo antes de salvar.");
       return;
     }
 
@@ -326,7 +331,7 @@ function Details() {
     const usernamesUnicos = new Set();
     for (const collaborator of collaborators) {
       if (usernamesUnicos.has(collaborator.username)) {
-        setErroEdicao("Nao repita o mesmo colaborador na lista.");
+        setErroEdicao("Não repita o mesmo colaborador na lista.");
         return;
       }
 
@@ -372,9 +377,9 @@ function Details() {
       setDetalhes(normalizarDetalhes(response.data));
       setModalEdicaoAberto(false);
     } catch (error) {
-      console.error("Erro ao atualizar pipe:", error);
+      console.error("Erro ao atualizar fluxo:", error);
       setErroEdicao(
-        error.response?.data?.error || "Nao foi possivel salvar as alteracoes."
+        error.response?.data?.error || "Não foi possível salvar as alterações."
       );
     } finally {
       setSalvandoEdicao(false);
@@ -399,11 +404,11 @@ function Details() {
       setCodigoPipe(codigoAtual);
 
       if (!codigoAtual.trim()) {
-        setErroCodigo("Nenhum codigo foi retornado para esta pipe.");
+        setErroCodigo("Nenhum código foi retornado para este fluxo.");
       }
     } catch (error) {
-      console.error("Erro ao carregar codigo atual da pipe:", error);
-      setErroCodigo("Nao foi possivel carregar o codigo atual da pipe.");
+      console.error("Erro ao carregar código atual do fluxo:", error);
+      setErroCodigo("Não foi possível carregar o código atual do fluxo.");
     } finally {
       setCarregandoCodigo(false);
     }
@@ -411,7 +416,7 @@ function Details() {
 
   const salvarCodigo = async () => {
     if (!codigoPipe.trim()) {
-      setErroCodigo("Adicione um codigo para salvar a pipe.");
+      setErroCodigo("Adicione um código para salvar o fluxo.");
       return;
     }
 
@@ -426,9 +431,9 @@ function Details() {
       setDetalhes(normalizarDetalhes(response.data));
       setModalCodigoAberto(false);
     } catch (error) {
-      console.error("Erro ao atualizar codigo da pipe:", error);
+      console.error("Erro ao atualizar código do fluxo:", error);
       setErroCodigo(
-        error.response?.data?.error || "Nao foi possivel salvar o codigo."
+        error.response?.data?.error || "Não foi possível salvar o código."
       );
     } finally {
       setSalvandoCodigo(false);
@@ -443,9 +448,9 @@ function Details() {
       await api.post(`pipelines/${id}/`);
       await buscarDados();
     } catch (error) {
-      console.error("Erro ao iniciar a pipe:", error);
+      console.error("Erro ao iniciar o fluxo:", error);
       setErro(
-        error.response?.data?.error || "Nao foi possivel iniciar a pipeline."
+        error.response?.data?.error || "Não foi possível iniciar o fluxo."
       );
     } finally {
       setIniciandoPipeline(false);
@@ -459,7 +464,7 @@ function Details() {
 
   const deletarPipeline = async () => {
     if (!confirmarDelete()) {
-      setDeleteError("Digite o nome exato da pipeline para confirmar a exclusao.");
+      setDeleteError("Digite o nome exato do fluxo para confirmar a exclusão.");
       return;
     }
 
@@ -470,8 +475,8 @@ function Details() {
       await api.post(`pipelines/${id}/delete/`, { confirm_name: detalhes.name });
       navigate("/fluxos");
     } catch (error) {
-      console.error("Erro ao deletar pipeline:", error);
-      setDeleteError(error.response?.data?.error || 'Nao foi possivel deletar a pipeline.');
+      console.error("Erro ao excluir o fluxo:", error);
+      setDeleteError(error.response?.data?.error || 'Não foi possível excluir o fluxo.');
     } finally {
       setDeleting(false);
     }
@@ -481,9 +486,9 @@ function Details() {
     <section className="details-page">
       <div className="details-shell">
         <header className="details-breadcrumb">
-          <Link to="/fluxos">Fluxo</Link>
+           <Link to="/fluxos">Fluxos</Link>
           <span className="details-breadcrumb-separator">{">"}</span>
-          <strong>{detalhes.name || `Pipe ${id}`}</strong>
+           <strong>{detalhes.name || `Fluxo ${id}`}</strong>
         </header>
 
         {erro && <div className="details-feedback error">{erro}</div>}
@@ -503,21 +508,21 @@ function Details() {
                       onClick={iniciarPipeline}
                       disabled={iniciandoPipeline}
                     >
-                      {iniciandoPipeline ? "Iniciando..." : "Start"}
+                       {iniciandoPipeline ? "Iniciando..." : "Iniciar"}
                     </button>
                     <button
                       type="button"
                       className="details-link-button"
                       onClick={abrirModalCodigo}
                     >
-                      Edit code
+                       Editar código
                     </button>
                     <button
                       type="button"
                       className="details-link-button"
                       onClick={abrirModalEdicao}
                     >
-                      Edit
+                       Editar
                     </button>
                                 {currentUser && detalhes.owner === currentUser && (
                                   <button
@@ -525,7 +530,7 @@ function Details() {
                                     className="details-delete-button"
                                     onClick={() => { setDeleteError(""); setDeleteConfirmText(""); setModalDeleteAberto(true); }}
                                   >
-                                    Delete
+                                    Excluir
                                   </button>
                                 )}
                   </div>
@@ -534,7 +539,7 @@ function Details() {
                 <div className="details-card-body">
                   <div className="details-meta-grid">
                     <div className="details-block">
-                      <span className="details-label">Flow</span>
+                      <span className="details-label">Fluxo</span>
                       <strong className="details-value">{detalhes.name || "Sem nome"}</strong>
                     </div>
 
@@ -546,14 +551,14 @@ function Details() {
                     </div>
 
                     <div className="details-block details-description">
-                      <span className="details-label">Descricao</span>
+                      <span className="details-label">Descrição</span>
                       <p>
-                        {detalhes.description || "Sem descricao cadastrada para esta pipe."}
+                        {detalhes.description || "Sem descrição cadastrada para este fluxo."}
                       </p>
                     </div>
 
                     <div className="details-block compact">
-                      <span className="details-label">Data de criacao</span>
+                      <span className="details-label">Data de criação</span>
                       <strong className="details-value muted">
                         {formatarDataHora(detalhes.created_at)}
                       </strong>
@@ -562,16 +567,16 @@ function Details() {
 
                   <div className="details-footer-meta">
                     <div className="details-block compact">
-                      <span className="details-label">Usuario Primario</span>
+                      <span className="details-label">Usuário primário</span>
                       <strong className="details-value muted">
-                        User, {detalhes.owner || "Sem proprietario"}
+                        {detalhes.owner || "Sem proprietário"}
                       </strong>
                     </div>
 
                     <div className="details-block compact">
                       <span className="details-label">ETL</span>
                       <strong className="details-value muted">
-                        {detalhes.etl_name || "Nao informada"}
+                        {detalhes.etl_name || "Não informada"}
                       </strong>
                     </div>
                   </div>
@@ -580,7 +585,7 @@ function Details() {
 
               <section className="details-card">
                 <div className="details-card-header">
-                  <h2>Historico de execucao</h2>
+                  <h2>Histórico de execução</h2>
                   <div className="details-card-actions">
                     {historicoFormatado.length > 5 && (
                       <button
@@ -595,7 +600,7 @@ function Details() {
                       type="button"
                       className="details-refresh-button"
                       onClick={buscarDados}
-                      aria-label="Atualizar historico"
+                      aria-label="Atualizar histórico"
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M20 12a8 8 0 1 1-2.34-5.66" />
@@ -608,17 +613,17 @@ function Details() {
                 <div className="details-history-table-wrapper">
                   <table className="details-history-table">
                     <thead>
-                      <tr>
-                        <th>Iniciar</th>
-                        <th>Duracao</th>
-                        <th>Status</th>
-                      </tr>
+                        <tr>
+                          <th>Início</th>
+                          <th>Duração</th>
+                          <th>Status</th>
+                        </tr>
                     </thead>
                     <tbody>
                       {historicoResumido.map((execucao) => (
                         <tr key={execucao.id}>
-                          <td data-label="Iniciar">{execucao.inicio}</td>
-                          <td data-label="Duracao">{execucao.duracao}</td>
+                          <td data-label="Início">{execucao.inicio}</td>
+                          <td data-label="Duração">{execucao.duracao}</td>
                           <td
                             data-label="Status"
                             className={`details-history-status ${execucao.status.classe}`}
@@ -632,7 +637,7 @@ function Details() {
 
                   {historicoResumido.length === 0 && (
                     <div className="details-empty-state">
-                      Nenhuma execucao encontrada para esta pipe.
+                      Nenhuma execução encontrada para este fluxo.
                     </div>
                   )}
                 </div>
@@ -650,7 +655,7 @@ function Details() {
                     detalhes.collaborators.map((colaborador) => (
                       <div key={colaborador.id} className="details-collaborator-item">
                         <span>{colaborador.username}</span>
-                        <small>{colaborador.permission}</small>
+                        <small>{PERMISSOES_LABELS[colaborador.permission] || colaborador.permission}</small>
                       </div>
                     ))
                   ) : (
@@ -679,12 +684,12 @@ function Details() {
             aria-labelledby="details-modal-title"
           >
             <div className="details-card-header">
-              <h2 id="details-modal-title">Historico completo de execucao</h2>
+              <h2 id="details-modal-title">Histórico completo de execução</h2>
               <button
                 type="button"
                 className="details-modal-close"
                 onClick={() => setModalHistoricoAberto(false)}
-                aria-label="Fechar historico completo"
+                aria-label="Fechar histórico completo"
               >
                 ×
               </button>
@@ -694,16 +699,16 @@ function Details() {
               <table className="details-history-table">
                 <thead>
                   <tr>
-                    <th>Iniciar</th>
-                    <th>Duracao</th>
+                    <th>Início</th>
+                    <th>Duração</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {historicoFormatado.map((execucao) => (
-                    <tr key={`modal-${execucao.id}`}>
-                      <td data-label="Iniciar">{execucao.inicio}</td>
-                      <td data-label="Duracao">{execucao.duracao}</td>
+                      <tr key={`modal-${execucao.id}`}>
+                      <td data-label="Início">{execucao.inicio}</td>
+                      <td data-label="Duração">{execucao.duracao}</td>
                       <td
                         data-label="Status"
                         className={`details-history-status ${execucao.status.classe}`}
@@ -733,12 +738,12 @@ function Details() {
             aria-labelledby="details-edit-modal-title"
           >
             <div className="details-card-header">
-              <h2 id="details-edit-modal-title">Editar informacoes da pipe</h2>
+              <h2 id="details-edit-modal-title">Editar informações do fluxo</h2>
               <button
                 type="button"
                 className="details-modal-close"
                 onClick={() => setModalEdicaoAberto(false)}
-                aria-label="Fechar edicao da pipe"
+                aria-label="Fechar edição do fluxo"
               >
                 ×
               </button>
@@ -760,24 +765,24 @@ function Details() {
                     onChange={(event) =>
                       atualizarCampoEdicao("name", event.target.value)
                     }
-                    placeholder="Digite o nome da pipeline"
+                    placeholder="Digite o nome do fluxo"
                   />
                 </label>
 
                 <label className="details-edit-field">
-                  <span>Descricao</span>
+                  <span>Descrição</span>
                   <textarea
                     value={formEdicao.description}
                     onChange={(event) =>
                       atualizarCampoEdicao("description", event.target.value)
                     }
-                    placeholder="Descreva o objetivo da pipe"
+                    placeholder="Descreva o objetivo do fluxo"
                     rows={4}
                   />
                 </label>
 
                 <label className="details-edit-field">
-                  <span>Usuario primario</span>
+                  <span>Usuário primário</span>
                   <select
                     value={formEdicao.owner}
                     onChange={(event) =>
@@ -787,8 +792,8 @@ function Details() {
                   >
                     <option value="">
                       {carregandoUsuarios
-                        ? "Carregando usuarios..."
-                        : "Selecione um usuario"}
+                        ? "Carregando usuários..."
+                        : "Selecione um usuário"}
                     </option>
                     {usuariosDisponiveis.map((usuario) => (
                       <option key={usuario} value={usuario}>
@@ -830,8 +835,8 @@ function Details() {
                           >
                             <option value="">
                               {carregandoUsuarios
-                                ? "Carregando usuarios..."
-                                : "Selecione um usuario"}
+                                ? "Carregando usuários..."
+                                : "Selecione um usuário"}
                             </option>
                             {usuariosDisponiveis.map((usuario) => (
                               <option key={usuario} value={usuario}>
@@ -852,7 +857,7 @@ function Details() {
                           >
                             {PERMISSOES_COLABORADOR.map((permissao) => (
                               <option key={permissao} value={permissao}>
-                                {permissao}
+                                {PERMISSOES_LABELS[permissao] || permissao}
                               </option>
                             ))}
                           </select>
@@ -889,7 +894,7 @@ function Details() {
                     onClick={salvarEdicao}
                     disabled={salvandoEdicao}
                   >
-                    {salvandoEdicao ? "Salvando..." : "Salvar alteracoes"}
+                    {salvandoEdicao ? "Salvando..." : "Salvar alterações"}
                   </button>
                 </div>
               </div>
@@ -912,12 +917,12 @@ function Details() {
             aria-labelledby="details-code-modal-title"  
           >
             <div className="details-card-header">
-              <h2 id="details-code-modal-title">Editar codigo da pipe</h2>
+              <h2 id="details-code-modal-title">Editar código do fluxo</h2>
               <button
                 type="button"
                 className="details-modal-close"
                 onClick={() => setModalCodigoAberto(false)}
-                aria-label="Fechar edicao de codigo"
+                aria-label="Fechar edição de código"
               >
                 ×
               </button>
@@ -933,7 +938,7 @@ function Details() {
 
                 {carregandoCodigo ? (
                   <div className="details-feedback details-code-loading">
-                    Carregando codigo da pipe...
+                    Carregando código do fluxo...
                   </div>
                 ) : (
                   <div className="details-code-editor">
@@ -969,7 +974,7 @@ function Details() {
                     onClick={salvarCodigo}
                     disabled={salvandoCodigo || carregandoCodigo}
                   >
-                    {salvandoCodigo ? "Salvando..." : "Salvar codigo"}
+                    {salvandoCodigo ? "Salvando..." : "Salvar código"}
                   </button>
                 </div>
               </div>
@@ -991,12 +996,12 @@ function Details() {
             aria-labelledby="details-delete-modal-title"
           >
             <div className="details-card-header">
-              <h2 id="details-delete-modal-title">Excluir pipeline</h2>
+              <h2 id="details-delete-modal-title">Excluir fluxo</h2>
               <button
                 type="button"
                 className="details-modal-close"
                 onClick={() => setModalDeleteAberto(false)}
-                aria-label="Fechar modal de exclusao"
+                aria-label="Fechar modal de exclusão"
               >
                 ×
               </button>
@@ -1005,9 +1010,9 @@ function Details() {
             <div className="details-modal-body">
               <div className="details-edit-form">
                 <p>
-                  Esta acao ira <strong>deletar permanentemente</strong> a pipeline.
-                  Para confirmar, digite o nome da pipeline abaixo e clique em
-                  <strong> Confirmar exclusao</strong>.
+                  Esta ação irá <strong>excluir permanentemente</strong> o fluxo.
+                  Para confirmar, digite o nome do fluxo abaixo e clique em
+                  <strong> Confirmar exclusão</strong>.
                 </p>
 
                 {deleteError && (
@@ -1017,12 +1022,12 @@ function Details() {
                 )}
 
                 <label className="details-edit-field">
-                  <span>Nome da pipeline</span>
+                  <span>Nome do fluxo</span>
                   <input
                     type="text"
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
-                    placeholder={`Digite: ${detalhes.name || "nome-da-pipe"}`}
+                    placeholder={`Digite: ${detalhes.name || "nome-do-fluxo"}`}
                   />
                 </label>
 
@@ -1041,7 +1046,7 @@ function Details() {
                     onClick={deletarPipeline}
                     disabled={deleting}
                   >
-                    {deleting ? "Excluindo..." : "Confirmar exclusao"}
+                    {deleting ? "Excluindo..." : "Confirmar exclusão"}
                   </button>
                 </div>
               </div>

@@ -18,6 +18,26 @@ def executar_etl(etl_name, run_id):
     # Executa o script Python diretamente
     print(f" Executando ETL: {etl_name} (Run ID: {run_id})")
     try:
+        # Se existir requirements.txt na pasta da ETL, instala dependências
+        req_file = etl_dir / "requirements.txt"
+        if req_file.exists():
+            print(f" Instalando dependências de {req_file}")
+            try:
+                subprocess.run([
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "--no-cache-dir",
+                    "--upgrade",
+                    "--force-reinstall",
+                    "-r",
+                    str(req_file),
+                ], cwd=str(etl_dir), check=True)
+            except subprocess.CalledProcessError as e:
+                print(f" Falha ao instalar dependências: {e}", file=sys.stderr)
+                sys.exit(1)
+
         result = subprocess.run(
             [sys.executable, str(main_file), run_id],
             cwd=str(etl_dir),

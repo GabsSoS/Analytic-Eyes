@@ -205,8 +205,8 @@ function Criar() {
             : []
         );
       } catch (error) {
-        console.error("Erro ao buscar pipeline para edicao:", error);
-        window.alert("Nao foi possivel carregar a pipeline para edicao.");
+        console.error("Erro ao buscar fluxo para edição:", error);
+        window.alert("Não foi possível carregar o fluxo para edição.");
       } finally {
         setIsLoadingPipeline(false);
       }
@@ -230,7 +230,7 @@ function Criar() {
 
   const uploadLabel =
     selectedFiles.length === 0
-      ? "Upload .py Files"
+      ? "Enviar arquivos .py"
       : selectedFiles.length === 1
         ? selectedFiles[0].name
         : `${selectedFiles[0].name} +${selectedFiles.length - 1}`;
@@ -242,7 +242,7 @@ function Criar() {
     const acao = isEditMode ? "salvar" : "criar";
 
     if (!jobName.trim()) {
-      window.alert(`Preencha o nome do Job antes de ${acao} o fluxo.`);
+      window.alert(`Preencha o nome do fluxo antes de ${acao}.`);
       return;
     }
 
@@ -297,8 +297,8 @@ function Criar() {
       window.alert(
         error.response?.data?.error ||
           (isEditMode
-            ? "Nao foi possivel atualizar o fluxo."
-            : "Nao foi possivel criar o fluxo.")
+            ? "Não foi possível atualizar o fluxo."
+            : "Não foi possível criar o fluxo.")
       );
     } finally {
       setIsSubmitting(false);
@@ -306,7 +306,7 @@ function Criar() {
   };
 
   if (isLoadingPipeline) {
-    return <div className="container">Carregando pipeline...</div>;
+    return <div className="container">Carregando fluxo...</div>;
   }
 
   return (
@@ -314,11 +314,11 @@ function Criar() {
       <div className="etapa1">
         <div className="cabecalho">
           <div className="circulo">1</div>
-          <h3>CONFIGURACOES GERAIS</h3>
+          <h3>CONFIGURAÇÕES GERAIS</h3>
         </div>
         <div className="conteudo">
           <div className="job">
-            <p className="paragaf">Nome do Job:</p>
+            <p className="paragaf">Nome do fluxo:</p>
             <input
               className="inputs-generics"
               type="text"
@@ -328,7 +328,7 @@ function Criar() {
             />
           </div>
           <div className="Descricao">
-            <p className="paragaf">Descricao:</p>
+            <p className="paragaf">Descrição:</p>
             <textarea
               className="inputs-desc"
               maxLength="255"
@@ -337,7 +337,7 @@ function Criar() {
             ></textarea>
           </div>
           <div className="Co-owners">
-            <p className="paragaf">Co-owners:</p>
+            <p className="paragaf">Colaboradores:</p>
             <div className="inputs-owners-wrapper">
               <div className="co-owners-input-box">
                 {coOwners.map((owner) => (
@@ -361,7 +361,7 @@ function Criar() {
                   onKeyDown={handleKeyPress}
                   placeholder={
                     coOwners.length === 0
-                      ? "Digite ou selecione um co-owner"
+                      ? "Digite ou selecione um colaborador"
                       : ""
                   }
                 />
@@ -377,9 +377,9 @@ function Criar() {
       </div>
 
       <div className="etapa2">
-        <div className="cabecalho">
+          <div className="cabecalho">
           <div className="circulo">2</div>
-          <h3>LOGICA E SCRIPT</h3>
+          <h3>LÓGICA E SCRIPT</h3>
         </div>
         <div className="etp-2">
           <div className="upload-container">
@@ -394,11 +394,11 @@ function Criar() {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              <img className="folder-icon" src={FolderIcon} alt="Folder Icon" />
+              <img className="folder-icon" src={FolderIcon} alt="Ícone de pasta" />
 
               <div className="upload-button">
                 <span className="file-icon">
-                  <img src={FolderMiniIcon} alt="File Icon" />
+                  <img src={FolderMiniIcon} alt="Ícone de arquivo" />
                 </span>{" "}
                 {uploadLabel}
               </div>
@@ -430,18 +430,18 @@ function Criar() {
 
       <div className="etapa3">
         <div className="cabecalho">
-          <div className="circulo">3</div>
-          <h3>BIBLIOTECAS</h3>
+          <div className="circulo">2</div>
+          <h3>LÓGICA E SCRIPT</h3>
         </div>
 
         <div className="etapa3-conteudo">
-          <h4 className="libs-title">LISTA DE LIBS</h4>
+          <h4 className="libs-title">LISTA DE BIBLIOTECAS</h4>
 
           <div className="libs-lista">
             {libraries.map((library, index) => (
               <div key={library.id} className="lib-item">
                 <label className="lib-label" htmlFor={`library-${index}`}>
-                  Nome da lib:
+                  Nome da biblioteca:
                 </label>
                 <input
                   id={`library-${index}`}
@@ -485,7 +485,7 @@ function Criar() {
                 ? "Salvando..."
                 : "Criando..."
               : isEditMode
-                ? "Salvar alteracoes"
+                ? "Salvar alterações"
                 : "Criar Fluxo"}
           </button>
         </div>

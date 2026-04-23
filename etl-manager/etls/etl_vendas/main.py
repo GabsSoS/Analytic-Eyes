@@ -2,6 +2,7 @@ import sys
 import time
 from datetime import datetime
 
+
 def executar_etl_vendas(run_id):
     """
     Simula uma ETL de extração de vendas
@@ -16,6 +17,8 @@ def executar_etl_vendas(run_id):
         {"id": 2, "valor": 250.50},
     ]
     
+    time.sleep(30)
+
     # Transformação
     print("🔄 Transformando dados...")
     time.sleep(2)

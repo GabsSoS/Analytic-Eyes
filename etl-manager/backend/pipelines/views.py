@@ -15,7 +15,15 @@ from .models import Pipeline, PipelinePermission, PipelineRun, storage
 from .tasks import execute_pipeline
 from django.db.models import Count
 
-
+# cria um serializer manual para os detalhes da pipeline, incluindo código main.py e lista de colaboradores
+@extend_schema(
+    operation_id='serialize_pipeline_details',
+    description='Serializa os detalhes de uma pipeline',
+    responses={200: OpenApiTypes.OBJECT}
+)
+@api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 def serialize_pipeline_details(pipeline):
     permissions = PipelinePermission.objects.filter(
         pipeline=pipeline
@@ -54,7 +62,15 @@ def serialize_pipeline_details(pipeline):
         "main_code": main_code,
     }
 
-
+# Função auxiliar para parsear o campo de colaboradores enviado no corpo da requisição. Aceita uma string JSON ou uma lista de objetos. Retorna uma lista de dicionários com objetos User e permissão.
+@extend_schema(
+    operation_id='parse_collaborators_payload',
+    description='Função auxiliar para parsear o campo de colaboradores enviado no corpo da requisição. Aceita uma string JSON ou uma lista de objetos. Retorna uma lista de dicionários com objetos User e permissão.',
+    responses={200: OpenApiTypes.OBJECT}
+)
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 def parse_collaborators_payload(raw_collaborators):
     if raw_collaborators in (None, ""):
         return None
@@ -131,7 +147,6 @@ def user_login(request):
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
 
-
 # View para obter informações do usuário autenticado (GET)
 @extend_schema(
     operation_id='user_info',
@@ -153,7 +168,6 @@ def user_info(request):
         },
         status=status.HTTP_200_OK
     )
-
 
 # View para alterar senha (POST)
 @extend_schema(
@@ -198,7 +212,6 @@ def change_password(request):
         {"message": "Senha alterada com sucesso"},
         status=status.HTTP_200_OK
     )
-
 
 # View para criação de pipeline (POST)
 @extend_schema(
@@ -389,7 +402,6 @@ def get_pipeline(request, pipeline_id):
 
     return Response(serialize_pipeline_details(pipeline), status=status.HTTP_200_OK)
 
-
 @extend_schema(
     operation_id='update_pipeline',
     description='Atualiza dados de uma pipeline existente, incluindo nome, status, descricao, colaboradores e codigo base',
@@ -552,7 +564,7 @@ def list_users(request):
     data = [{"id": u.id, "username": u.username} for u in qs.order_by("username")[:200]]
     return Response({"users": data}, status=status.HTTP_200_OK)
 
-
+# Estatísticas resumidas das pipelines visíveis ao usuário (GET)
 @extend_schema(
     operation_id='pipelines_stats',
     description='Retorna estatísticas resumidas das pipelines visíveis ao usuário',
@@ -595,7 +607,7 @@ def pipelines_stats(request):
         status=status.HTTP_200_OK,
     )
 
-
+# View para deletar uma pipeline (POST ou DELETE)
 @extend_schema(
     operation_id='delete_pipeline',
     description='Deleta uma pipeline. Apenas o owner pode deletar. É necessário confirmar o nome da pipeline no corpo da requisição usando o campo `confirm_name`. Aceita POST ou DELETE.',
@@ -632,3 +644,20 @@ def pipeline_delete(request, pipeline_id):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
+# metodo para ancorar uma pipelina em outra pipeline (POST)
+@extend_schema(
+    operation_id='link_pipeline',
+    description='Linka uma pipeline a outra pipeline, permitindo que uma pipeline execute outra como sub-etapa. Aceita o ID da pipeline a ser linkada e o tipo de link (ex: "predecessor" ou "successor") no corpo da requisição.',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline que irá receber o link'),
+    ],
+    request=OpenApiTypes.OBJECT,
+    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def link_pipeline(request, pipeline_id):
+ 
+    pass

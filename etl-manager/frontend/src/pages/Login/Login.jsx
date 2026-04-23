@@ -64,7 +64,7 @@ function Login() {
               id="email" 
               className="email" 
               type="text" 
-              placeholder="Digite o seu Username" 
+              placeholder="Digite seu nome de usuário" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
@@ -77,7 +77,7 @@ function Login() {
               id="password"
               className="password" 
               type="password" 
-              placeholder="Digite a sua senha" 
+              placeholder="Digite sua senha" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
@@ -97,7 +97,7 @@ function Login() {
         </form>
       </section>
 
-      <img className="foto-walpaper" src={CartoonImage} alt="Cartoon ilustrativo" />
+      <img className="foto-walpaper" src={CartoonImage} alt="Imagem ilustrativa" />
 
       <div className="onda-direita">
         <img src={OndaDireita} alt="Onda decorativa direita" />

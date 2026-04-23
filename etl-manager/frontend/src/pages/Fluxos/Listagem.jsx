@@ -4,18 +4,18 @@ import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
 const FLUXOS_MOCKADOS = [
-  { id: 1, nome: "OP - Abertura do dia", ultimaExecucao: "Ha 1 hora", proprietario: "Lucas Souza" },
+  { id: 1, nome: "OP - Abertura do dia", ultimaExecucao: "Há 1 hora", proprietario: "Lucas Souza" },
   { id: 2, nome: "Limpeza de tabela", ultimaExecucao: "4 semanas", proprietario: "Lucas Souza" },
   { id: 3, nome: "Limpeza planilhas ETL", ultimaExecucao: "2 dias", proprietario: "Lucas Souza" },
-  { id: 4, nome: "Softwares sem licenca ETL", ultimaExecucao: "Ha 10 minutos", proprietario: "Lucas Souza" },
-  { id: 5, nome: "Carga clientes ativos ETL", ultimaExecucao: "1 mes", proprietario: "Lucas Souza" },
-  { id: 6, nome: "Normalizacao enderecos ETL", ultimaExecucao: "Ha 5 horas", proprietario: "Lucas Souza" },
-  { id: 7, nome: "Inventario servidores ETL", ultimaExecucao: "Ha 1 ano", proprietario: "Lucas Souza" },
+  { id: 4, nome: "Softwares sem licenca ETL", ultimaExecucao: "Há 10 minutos", proprietario: "Lucas Souza" },
+  { id: 5, nome: "Carga clientes ativos ETL", ultimaExecucao: "1 mês", proprietario: "Lucas Souza" },
+  { id: 6, nome: "Normalizacao enderecos ETL", ultimaExecucao: "Há 5 horas", proprietario: "Lucas Souza" },
+  { id: 7, nome: "Inventario servidores ETL", ultimaExecucao: "Há 1 ano", proprietario: "Lucas Souza" },
   { id: 8, nome: "Atualizacao precos ETL", ultimaExecucao: "15 minutos", proprietario: "Ana Lima" },
-  { id: 9, nome: "Consolidacao financeira ETL", ultimaExecucao: "Ha 5 dias", proprietario: "Camila Rocha" },
-  { id: 10, nome: "Monitoramento acessos ETL", ultimaExecucao: "Ha 3 horas", proprietario: "Pedro Martins" },
-  { id: 11, nome: "Validacao contratos ETL", ultimaExecucao: "Ha 12 horas", proprietario: "Juliana Costa" },
-  { id: 12, nome: "Integracao RH ETL", ultimaExecucao: "Ha 1 hora", proprietario: "Bruno Alves" },
+  { id: 9, nome: "Consolidacao financeira ETL", ultimaExecucao: "Há 5 dias", proprietario: "Camila Rocha" },
+  { id: 10, nome: "Monitoramento acessos ETL", ultimaExecucao: "Há 3 horas", proprietario: "Pedro Martins" },
+  { id: 11, nome: "Validacao contratos ETL", ultimaExecucao: "Há 12 horas", proprietario: "Juliana Costa" },
+  { id: 12, nome: "Integracao RH ETL", ultimaExecucao: "Há 1 hora", proprietario: "Bruno Alves" },
   { id: 13, nome: "Atualizacao do DB", ultimaExecucao: "2 semanas", proprietario: "Mariana Reis" },
 ];
 
@@ -134,14 +134,14 @@ function Fluxos() {
 
   const tituloAba =
     abaAtiva === ABAS.meus
-      ? "Nenhum fluxo criado por voce."
-      : "Nenhum fluxo compartilhado com voce.";
+      ? "Nenhum fluxo criado por você."
+      : "Nenhum fluxo compartilhado com você.";
 
   return (
     <section className="fluxos-page">
       <div className="fluxos-shell">
         <header className="fluxos-header">
-          <h1>Fluxo</h1>
+          <h1>Fluxos</h1>
         </header>
 
         <div className="fluxos-tabs" role="tablist" aria-label="Categorias de fluxos">
@@ -157,7 +157,7 @@ function Fluxos() {
             className={`fluxos-tab ${abaAtiva === ABAS.compartilhados ? "ativa" : ""}`}
             onClick={() => setAbaAtiva(ABAS.compartilhados)}
           >
-            Compartilhado comigo
+            Compartilhados comigo
           </button>
         </div>
 
@@ -166,8 +166,8 @@ function Fluxos() {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Ultima execucao</th>
-                <th>Proprietario</th>
+                <th>Última execução</th>
+                <th>Proprietário</th>
               </tr>
             </thead>
             <tbody>
@@ -185,8 +185,8 @@ function Fluxos() {
                   tabIndex={0}
                 >
                   <td data-label="Nome">{fluxo.nome}</td>
-                  <td data-label="Ultima execucao">{fluxo.ultimaExecucao}</td>
-                  <td data-label="Proprietario">{fluxo.proprietario}</td>
+                  <td data-label="Última execução">{fluxo.ultimaExecucao}</td>
+                  <td data-label="Proprietário">{fluxo.proprietario}</td>
                 </tr>
               ))}
             </tbody>

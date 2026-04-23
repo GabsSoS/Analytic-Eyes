@@ -88,7 +88,7 @@ function Settings() {
     setMessageUser("");
 
     if (!newUserData.username || !newUserData.password) {
-      setErrorUser("Username e senha são obrigatórios");
+      setErrorUser("Nome de usuário e senha são obrigatórios");
       return;
     }
 
