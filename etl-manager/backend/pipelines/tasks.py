@@ -10,6 +10,58 @@ from .models import Pipeline, PipelineRun
 logger = logging.getLogger(__name__)
 
 
+def queue_pipeline_execution(pipeline, triggered_by):
+    if PipelineRun.objects.filter(
+        pipeline=pipeline,
+        status__in=[PipelineRun.Status.PENDING, PipelineRun.Status.RUNNING],
+    ).exists():
+        logger.info(
+            "Pipeline %s ja possui execucao pendente ou em andamento; disparo ignorado",
+            pipeline.id,
+        )
+        return None
+
+    run = PipelineRun.objects.create(
+        pipeline=pipeline,
+        status=PipelineRun.Status.PENDING,
+        triggered_by=triggered_by,
+    )
+    execute_pipeline.delay(run.id)
+    return run
+
+
+def _resolve_anchored_trigger_user(source_run, target_pipeline):
+    trigger_user = source_run.triggered_by
+    if trigger_user and target_pipeline.can_execute(trigger_user):
+        return trigger_user
+    return target_pipeline.owner
+
+
+def trigger_anchored_pipelines(source_run):
+    source_pipeline = source_run.pipeline
+
+    for target_pipeline in source_pipeline.trigger_sources.all():
+        try:
+            trigger_user = _resolve_anchored_trigger_user(source_run, target_pipeline)
+            queued_run = queue_pipeline_execution(target_pipeline, trigger_user)
+
+            if queued_run is None:
+                continue
+
+            logger.info(
+                "Pipeline %s ancorada em %s disparada automaticamente (run %s)",
+                target_pipeline.id,
+                source_pipeline.id,
+                queued_run.id,
+            )
+        except Exception:
+            logger.exception(
+                "Erro ao disparar pipeline ancorada %s a partir da pipeline %s",
+                target_pipeline.id,
+                source_pipeline.id,
+            )
+
+
 @shared_task(
     bind=True,
     acks_late=True,
@@ -88,6 +140,8 @@ def execute_pipeline(self, run_id):
                 run.status = "SUCCESS"
                 run.finished_at = timezone.now()
                 run.save()
+
+                trigger_anchored_pipelines(run)
 
                 logger.info(f"Pipeline {run_id} executada com sucesso")
 

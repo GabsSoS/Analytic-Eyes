@@ -12,18 +12,10 @@ from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 import json
 from .models import Pipeline, PipelinePermission, PipelineRun, storage
-from .tasks import execute_pipeline
+from .tasks import queue_pipeline_execution
 from django.db.models import Count
 
 # cria um serializer manual para os detalhes da pipeline, incluindo código main.py e lista de colaboradores
-@extend_schema(
-    operation_id='serialize_pipeline_details',
-    description='Serializa os detalhes de uma pipeline',
-    responses={200: OpenApiTypes.OBJECT}
-)
-@api_view(["GET"])
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
 def serialize_pipeline_details(pipeline):
     permissions = PipelinePermission.objects.filter(
         pipeline=pipeline
@@ -44,6 +36,22 @@ def serialize_pipeline_details(pipeline):
         if permission.user_id != pipeline.owner_id
     ]
 
+    trigger_sources = [
+        {
+            "id": source.id,
+            "name": source.name,
+        }
+        for source in pipeline.trigger_targets.all().order_by("name")
+    ]
+
+    trigger_targets = [
+        {
+            "id": target.id,
+            "name": target.name,
+        }
+        for target in pipeline.trigger_sources.all().order_by("name")
+    ]
+
     pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
     try:
         main_code = storage.get_script(pipeline_name, "main.py")
@@ -59,18 +67,12 @@ def serialize_pipeline_details(pipeline):
         "created_at": pipeline.created_at,
         "status": latest_run.status if latest_run else "NOT_RUN",
         "collaborators": collaborators,
+        "trigger_sources": trigger_sources,
+        "trigger_targets": trigger_targets,
         "main_code": main_code,
     }
 
 # Função auxiliar para parsear o campo de colaboradores enviado no corpo da requisição. Aceita uma string JSON ou uma lista de objetos. Retorna uma lista de dicionários com objetos User e permissão.
-@extend_schema(
-    operation_id='parse_collaborators_payload',
-    description='Função auxiliar para parsear o campo de colaboradores enviado no corpo da requisição. Aceita uma string JSON ou uma lista de objetos. Retorna uma lista de dicionários com objetos User e permissão.',
-    responses={200: OpenApiTypes.OBJECT}
-)
-@api_view(["POST"])
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
 def parse_collaborators_payload(raw_collaborators):
     if raw_collaborators in (None, ""):
         return None
@@ -107,6 +109,53 @@ def parse_collaborators_payload(raw_collaborators):
         )
 
     return collaborators
+
+
+def parse_trigger_sources_payload(raw_pipeline_ids, user, current_pipeline=None):
+    if raw_pipeline_ids in (None, ""):
+        return None
+
+    if isinstance(raw_pipeline_ids, str):
+        try:
+            raw_pipeline_ids = json.loads(raw_pipeline_ids)
+        except json.JSONDecodeError:
+            raise ValueError("Campo 'anchor_pipeline_ids' deve ser um JSON valido")
+
+    if not isinstance(raw_pipeline_ids, list):
+        raise ValueError("Campo 'anchor_pipeline_ids' deve ser uma lista")
+
+    normalized_ids = []
+    seen_ids = set()
+
+    for pipeline_id in raw_pipeline_ids:
+        try:
+            normalized_id = int(pipeline_id)
+        except (TypeError, ValueError):
+            raise ValueError("Cada item de 'anchor_pipeline_ids' deve ser um inteiro")
+
+        if current_pipeline is not None and normalized_id == current_pipeline.id:
+            raise ValueError("Uma pipeline nao pode ser ancorada nela mesma")
+
+        if normalized_id in seen_ids:
+            continue
+
+        seen_ids.add(normalized_id)
+        normalized_ids.append(normalized_id)
+
+    visible_pipelines = Pipeline.pipeline_list(user).filter(id__in=normalized_ids)
+    pipelines_by_id = {pipeline.id: pipeline for pipeline in visible_pipelines}
+
+    missing_ids = [
+        pipeline_id for pipeline_id in normalized_ids
+        if pipeline_id not in pipelines_by_id
+    ]
+
+    if missing_ids:
+        raise ValueError(
+            f"Pipelines de ancoragem nao encontradas ou sem acesso: {missing_ids}"
+        )
+
+    return [pipelines_by_id[pipeline_id] for pipeline_id in normalized_ids]
 
 #view para realizar login
 @api_view(["POST"])
@@ -244,6 +293,7 @@ def pipeline_create(request):
     
     main_code = request.data.get("main_code", "")
     script_file = request.FILES.get("script")
+    trigger_sources = None
 
     if not name:
         return JsonResponse({"error": "O campo 'name' é obrigatório"}, status=400)
@@ -251,6 +301,10 @@ def pipeline_create(request):
     try:
         # Lê o arquivo e decodifica
         main_code = script_file.read().decode('utf-8') if script_file else main_code
+        trigger_sources = parse_trigger_sources_payload(
+            request.data.get("anchor_pipeline_ids"),
+            request.user,
+        )
         
         # Se não foi fornecido código, usar template padrão
         if not main_code.strip():
@@ -286,7 +340,8 @@ if __name__ == "__main__":
             description=description,
             user=request.user,
             lib=lib,
-            main_code=main_code
+            main_code=main_code,
+            trigger_sources=trigger_sources,
         )
         
         return Response(
@@ -323,14 +378,14 @@ def trigger_pipeline(request, pipeline_id):
     if not pipeline.can_execute(request.user):
         return Response({"error": "Sem permissão"}, status=status.HTTP_403_FORBIDDEN)
 
-    run = PipelineRun.objects.create(
-        pipeline=pipeline,
-        status="pending",
-        triggered_by=request.user
-    )
+    run = queue_pipeline_execution(pipeline, request.user)
+    if run is None:
+        return Response(
+            {"error": "Pipeline ja possui uma execucao pendente ou em andamento"},
+            status=status.HTTP_409_CONFLICT,
+        )
 
     # Dispara o worker (assíncrono)
-    execute_pipeline.delay(run.id)
 
     # 202 Accepted porque o processamento é assíncrono
     return Response(
@@ -436,6 +491,11 @@ def update_pipeline(request, pipeline_id):
 
     try:
         collaborators = parse_collaborators_payload(request.data.get("collaborators"))
+        trigger_sources = parse_trigger_sources_payload(
+            request.data.get("anchor_pipeline_ids"),
+            request.user,
+            current_pipeline=pipeline,
+        )
         script_file = request.FILES.get("script")
         main_code = request.data.get("main_code")
 
@@ -456,6 +516,7 @@ def update_pipeline(request, pipeline_id):
             status=next_status,
             collaborators=collaborators,
             main_code=main_code,
+            trigger_sources=trigger_sources,
         )
     except UnicodeDecodeError:
         return Response(
@@ -645,18 +706,3 @@ def pipeline_delete(request, pipeline_id):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# metodo para ancorar uma pipelina em outra pipeline (POST)
-@extend_schema(
-    operation_id='link_pipeline',
-    description='Linka uma pipeline a outra pipeline, permitindo que uma pipeline execute outra como sub-etapa. Aceita o ID da pipeline a ser linkada e o tipo de link (ex: "predecessor" ou "successor") no corpo da requisição.',
-    parameters=[
-        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline que irá receber o link'),
-    ],
-    request=OpenApiTypes.OBJECT,
-    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
-)
-@api_view(["POST"])
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
-def link_pipeline(request, pipeline_id):
-    pass

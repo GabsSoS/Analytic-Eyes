@@ -169,8 +169,9 @@ function Criar() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await api.get("users/");
-        const users = response.data?.users ?? [];
+        const usersResponse = await api.get("users/");
+        const users = usersResponse.data?.users ?? [];
+
         setOwnersList(users.map((user) => user.username));
       } catch (error) {
         console.error("Erro ao buscar usuarios:", error);

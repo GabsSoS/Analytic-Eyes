@@ -24,6 +24,12 @@ class Pipeline(models.Model):
         help_text="Nome da ETL (pasta em /etls/)"
     )
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    trigger_sources = models.ManyToManyField(
+        "self",
+        symmetrical=False,
+        blank=True,
+        related_name="trigger_targets",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -58,7 +64,15 @@ class Pipeline(models.Model):
     
     # Criação de Pipeline
     @classmethod
-    def create_pipeline(cls, name, description, user, lib, main_code):
+    def create_pipeline(
+        cls,
+        name,
+        description,
+        user,
+        lib,
+        main_code,
+        trigger_sources=None,
+    ):
         
         script_code = '''import os
 
@@ -84,12 +98,17 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
             raise Exception(f"Erro ao salvar scripts da pipeline: {str(e)}")
             
         # Criação do registro no banco de dados
-        return cls.objects.create(
+        pipeline = cls.objects.create(
             name=name,
             description=description,
             etl_name=f'etls/{pipeline_name}',
             owner=user
         )
+
+        if trigger_sources is not None:
+            pipeline.set_trigger_sources(trigger_sources)
+
+        return pipeline
 
     def can_edit(self, user):
         if not user.is_authenticated:
@@ -114,6 +133,7 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
         status=None,
         collaborators=None,
         main_code=None,
+        trigger_sources=None,
     ):
         if not self.can_edit(acting_user):
             raise PermissionError("Usuario nao tem permissao para editar esta pipe")
@@ -149,6 +169,9 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
             storage.save_script(current_pipeline_name, "main.py", main_code)
 
         self.save()
+
+        if trigger_sources is not None:
+            self.set_trigger_sources(trigger_sources)
 
         if collaborators is not None:
             allowed_permissions = {
@@ -219,6 +242,57 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
             latest_run.save()
 
         return self
+
+    def set_trigger_sources(self, source_pipelines):
+        if source_pipelines is None:
+            return
+
+        normalized_sources = []
+        seen_ids = set()
+
+        for source_pipeline in source_pipelines:
+            if source_pipeline.id in seen_ids:
+                continue
+
+            if source_pipeline.id == self.id:
+                raise ValueError("Uma pipeline nao pode ser ancorada nela mesma")
+
+            if self._would_create_trigger_cycle(source_pipeline):
+                raise ValueError(
+                    "A ancoragem cria um ciclo entre pipelines e nao pode ser salva"
+                )
+
+            normalized_sources.append(source_pipeline)
+            seen_ids.add(source_pipeline.id)
+
+        self.trigger_targets.set(normalized_sources)
+
+    def _would_create_trigger_cycle(self, source_pipeline):
+        pending_ids = [self.id]
+        visited_ids = set()
+
+        while pending_ids:
+            pipeline_id = pending_ids.pop()
+            if pipeline_id in visited_ids:
+                continue
+
+            visited_ids.add(pipeline_id)
+
+            downstream_ids = list(
+                Pipeline.objects.filter(trigger_targets__id=pipeline_id)
+                .values_list("id", flat=True)
+            )
+
+            if source_pipeline.id in downstream_ids:
+                return True
+
+            pending_ids.extend(
+                downstream_id
+                for downstream_id in downstream_ids
+                if downstream_id not in visited_ids
+            )
+
+        return False
     
     # Verifica se o usuário é owner ou se tem permição de edição ou execução
     def can_execute(self, user):
@@ -363,3 +437,4 @@ class PipelineRun(models.Model):
         ]
         
         return data
+

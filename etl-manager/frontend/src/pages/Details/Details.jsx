@@ -14,6 +14,8 @@ const DETALHE_INICIAL = {
   created_at: null,
   status: "NOT_RUN",
   collaborators: [],
+  trigger_sources: [],
+  trigger_targets: [],
 };
 
 const PERMISSOES_COLABORADOR = ["edit", "execute", "view"];
@@ -28,6 +30,12 @@ const normalizarDetalhes = (dadosDetalhes) => ({
   ...(dadosDetalhes ?? {}),
   collaborators: Array.isArray(dadosDetalhes?.collaborators)
     ? dadosDetalhes.collaborators
+    : [],
+  trigger_sources: Array.isArray(dadosDetalhes?.trigger_sources)
+    ? dadosDetalhes.trigger_sources
+    : [],
+  trigger_targets: Array.isArray(dadosDetalhes?.trigger_targets)
+    ? dadosDetalhes.trigger_targets
     : [],
 });
 
@@ -136,7 +144,9 @@ function Details() {
   const [deleteError, setDeleteError] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
   const [usuariosDisponiveis, setUsuariosDisponiveis] = useState([]);
+  const [pipelinesDisponiveis, setPipelinesDisponiveis] = useState([]);
   const [carregandoUsuarios, setCarregandoUsuarios] = useState(false);
+  const [carregandoPipelines, setCarregandoPipelines] = useState(false);
   const [carregandoCodigo, setCarregandoCodigo] = useState(false);
   const [iniciandoPipeline, setIniciandoPipeline] = useState(false);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
@@ -144,11 +154,13 @@ function Details() {
   const [erroEdicao, setErroEdicao] = useState("");
   const [erroCodigo, setErroCodigo] = useState("");
   const [codigoPipe, setCodigoPipe] = useState("");
+  const [novoAnchorId, setNovoAnchorId] = useState("");
   const [formEdicao, setFormEdicao] = useState({
     name: "",
     description: "",
     owner: "",
     collaborators: [],
+    trigger_source_ids: [],
   });
 
   const buscarDados = useCallback(async () => {
@@ -239,6 +251,26 @@ function Details() {
     [historicoFormatado]
   );
 
+  const pipelinesAncoradasSelecionadas = useMemo(
+    () =>
+      pipelinesDisponiveis.filter((pipeline) =>
+        formEdicao.trigger_source_ids.includes(pipeline.id)
+      ),
+    [formEdicao.trigger_source_ids, pipelinesDisponiveis]
+  );
+
+  const opcoesAncoragem = useMemo(
+    () =>
+      pipelinesDisponiveis.filter((pipeline) => {
+        if (pipeline.id === Number(id)) {
+          return false;
+        }
+
+        return !formEdicao.trigger_source_ids.includes(pipeline.id);
+      }),
+    [formEdicao.trigger_source_ids, id, pipelinesDisponiveis]
+  );
+
   const abrirModalEdicao = useCallback(async () => {
     setErroEdicao("");
     setFormEdicao({
@@ -251,30 +283,63 @@ function Details() {
             permission: colaborador.permission ?? "view",
           }))
         : [],
+      trigger_source_ids: Array.isArray(detalhes.trigger_sources)
+        ? detalhes.trigger_sources
+            .map((pipeline) => Number(pipeline.id))
+            .filter((pipelineId) => Number.isFinite(pipelineId))
+        : [],
     });
+    setNovoAnchorId("");
     setModalEdicaoAberto(true);
 
-    if (usuariosDisponiveis.length > 0 || carregandoUsuarios) {
+    if (
+      (usuariosDisponiveis.length > 0 && pipelinesDisponiveis.length > 0) ||
+      carregandoUsuarios ||
+      carregandoPipelines
+    ) {
       return;
     }
 
     setCarregandoUsuarios(true);
+    setCarregandoPipelines(true);
 
     try {
-      const response = await api.get("users/");
-      const users = response.data?.users ?? [];
+      const [usersResponse, pipelinesResponse] = await Promise.all([
+        api.get("users/"),
+        api.get("pipelines/"),
+      ]);
+      const users = usersResponse.data?.users ?? [];
+      const pipelines = pipelinesResponse.data?.pipelines ?? [];
       setUsuariosDisponiveis(
         users
           .map((user) => user.username)
           .filter(Boolean)
           .sort((userA, userB) => userA.localeCompare(userB, "pt-BR"))
       );
+      setPipelinesDisponiveis(
+        pipelines
+          .map((pipeline) => ({
+            id: Number(pipeline.id),
+            name: pipeline.name ?? `Fluxo ${pipeline.id}`,
+          }))
+          .filter((pipeline) => Number.isFinite(pipeline.id))
+          .sort((pipelineA, pipelineB) =>
+            pipelineA.name.localeCompare(pipelineB.name, "pt-BR")
+          )
+      );
     } catch (error) {
-      console.error("Erro ao buscar usuarios para edicao:", error);
+      console.error("Erro ao buscar dados para edicao:", error);
     } finally {
       setCarregandoUsuarios(false);
+      setCarregandoPipelines(false);
     }
-  }, [carregandoUsuarios, detalhes, usuariosDisponiveis.length]);
+  }, [
+    carregandoPipelines,
+    carregandoUsuarios,
+    detalhes,
+    pipelinesDisponiveis.length,
+    usuariosDisponiveis.length,
+  ]);
 
   const atualizarCampoEdicao = (campo, valor) => {
     setFormEdicao((atual) => ({
@@ -313,6 +378,33 @@ function Details() {
     }));
   };
 
+  const adicionarAncoragem = () => {
+    const pipelineId = Number(novoAnchorId);
+
+    if (!pipelineId) {
+      return;
+    }
+
+    setFormEdicao((atual) => {
+      if (atual.trigger_source_ids.includes(pipelineId)) {
+        return atual;
+      }
+
+      return {
+        ...atual,
+        trigger_source_ids: [...atual.trigger_source_ids, pipelineId],
+      };
+    });
+    setNovoAnchorId("");
+  };
+
+  const removerAncoragem = (pipelineId) => {
+    setFormEdicao((atual) => ({
+      ...atual,
+      trigger_source_ids: atual.trigger_source_ids.filter((idAtual) => idAtual !== pipelineId),
+    }));
+  };
+
   const salvarEdicao = async () => {
     const nome = formEdicao.name.trim();
 
@@ -345,6 +437,7 @@ function Details() {
       const payload = {
         name: nome,
         description: formEdicao.description.trim(),
+        anchor_pipeline_ids: formEdicao.trigger_source_ids,
       };
 
       if (formEdicao.owner.trim() && formEdicao.owner.trim() !== detalhes.owner) {
@@ -665,6 +758,46 @@ function Details() {
                   )}
                 </div>
               </section>
+
+              <section className="details-card">
+                <div className="details-card-header">
+                  <h2>Ancoragens</h2>
+                </div>
+
+                <div className="details-anchor-section">
+                  <span className="details-label">Executa apos sucesso de</span>
+                  {detalhes.trigger_sources.length > 0 ? (
+                    <div className="details-anchor-list">
+                      {detalhes.trigger_sources.map((pipeline) => (
+                        <div key={`source-${pipeline.id}`} className="details-anchor-item">
+                          {pipeline.name}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="details-empty-side">
+                      Nenhuma ancoragem configurada.
+                    </div>
+                  )}
+                </div>
+
+                <div className="details-anchor-section">
+                  <span className="details-label">Dispara automaticamente</span>
+                  {detalhes.trigger_targets.length > 0 ? (
+                    <div className="details-anchor-list">
+                      {detalhes.trigger_targets.map((pipeline) => (
+                        <div key={`target-${pipeline.id}`} className="details-anchor-item">
+                          {pipeline.name}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="details-empty-side">
+                      Nenhum fluxo depende deste.
+                    </div>
+                  )}
+                </div>
+              </section>
             </aside>
           </div>
         )}
@@ -802,6 +935,63 @@ function Details() {
                     ))}
                   </select>
                 </label>
+
+                <div className="details-edit-collaborators">
+                  <div className="details-edit-collaborators-header">
+                    <span>Executar apos sucesso de</span>
+                  </div>
+
+                  <div className="details-anchor-picker">
+                    <select
+                      value={novoAnchorId}
+                      onChange={(event) => setNovoAnchorId(event.target.value)}
+                      disabled={carregandoPipelines}
+                    >
+                      <option value="">
+                        {carregandoPipelines
+                          ? "Carregando pipelines..."
+                          : "Selecione uma pipeline"}
+                      </option>
+                      {opcoesAncoragem.map((pipeline) => (
+                        <option key={pipeline.id} value={pipeline.id}>
+                          {pipeline.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="details-link-button"
+                      onClick={adicionarAncoragem}
+                      disabled={!novoAnchorId}
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+
+                  {pipelinesAncoradasSelecionadas.length > 0 ? (
+                    <div className="details-anchor-list editable">
+                      {pipelinesAncoradasSelecionadas.map((pipeline) => (
+                        <div
+                          key={`selected-anchor-${pipeline.id}`}
+                          className="details-anchor-item editable"
+                        >
+                          <span>{pipeline.name}</span>
+                          <button
+                            type="button"
+                            className="details-edit-remove"
+                            onClick={() => removerAncoragem(pipeline.id)}
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="details-empty-state details-edit-empty">
+                      Este fluxo nao possui ancoragens configuradas.
+                    </div>
+                  )}
+                </div>
 
                 <div className="details-edit-collaborators">
                   <div className="details-edit-collaborators-header">
