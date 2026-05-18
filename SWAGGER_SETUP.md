@@ -1,6 +1,6 @@
 # 📚 Configuração do Swagger - Analytic Eyes API
 
-## ✅ O que foi implementado
+## O que foi implementado
 
 Foi adicionada documentação interativa **Swagger (OpenAPI 3.0)** à  API usando **drf-spectacular**, que é a solução mais moderna para Django REST Framework.
 
@@ -15,7 +15,7 @@ Foi adicionada documentação interativa **Swagger (OpenAPI 3.0)** à  API usand
 
 ---
 
-## 🚀 Como usar
+## Como usar
 
 ### 1. Instalar as dependências
 ```bash
@@ -59,7 +59,7 @@ Todos os endpoints agora aparecem no Swagger com descrições claras:
 
 ---
 
-## 🔧 Configurações Adicionadas
+## Configurações Adicionadas
 
 No `settings.py`, foi adicionado:
 
@@ -81,7 +81,7 @@ Você pode customizar:
 
 ---
 
-## 💡 Próximos Passos (Opcional)
+## Próximos Passos (Opcional)
 
 ### 1. Adicionar Serializers para melhor documentação
 Converter suas views em ViewSets e Serializers para documentação ainda mais detalhada:
@@ -122,7 +122,7 @@ SPECTACULAR_SETTINGS = {
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Problema: "Module not found: drf_spectacular"
 **Solução:** Certifique-se de ter instalado:
@@ -135,12 +135,4 @@ pip install drf-spectacular
 
 ### Problema: "Permission Denied" no Swagger
 **Solução:** Certifique-se de estar autenticado usando o botão "Authorize"
-
----
-
-## 📖 Referências
-
-- [drf-spectacular Documentation](https://drf-spectacular.readthedocs.io/)
-- [Django REST Framework](https://www.django-rest-framework.org/)
-- [OpenAPI 3.0 Spec](https://spec.openapis.org/oas/v3.0.3)
 

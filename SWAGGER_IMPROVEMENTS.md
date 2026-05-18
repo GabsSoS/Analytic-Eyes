@@ -1,6 +1,6 @@
 # 🎯 Melhorias Futuras - Swagger
 
-Este arquivo documenta as melhorias opcionais que você pode fazer na documentação Swagger para deixar ainda mais completa.
+Este arquivo documenta as melhorias opcionais para fazer na documentação Swagger para deixar ainda mais completa.
 
 ## 1. Usar Serializers (Recomendado)
 
@@ -199,7 +199,7 @@ urlpatterns = [
 ]
 ```
 
-## 🚀 Como Implementar
+## Como Implementar
 
 1. Comece com **Serializers** - é a mudança mais impactante
 2. Depois migre para **ViewSets** - deixa o código mais conciso
@@ -207,7 +207,4 @@ urlpatterns = [
 4. Implemente **Exemplos** nos endpoints mais importantes
 5. Configure **Filtros** conforme necessário
 
----
-
-Essas melhorias tornarão a documentação Swagger ainda mais profissional e útil para o time de frontend! 🎯
 
