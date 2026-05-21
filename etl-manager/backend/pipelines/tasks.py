@@ -106,8 +106,11 @@ def execute_pipeline(self, run_id):
             # Conecta ao Docker
             client = docker.from_env()
 
-            # Caminho das ETLs no host
-            etl_path = os.getenv("ETL_PATH", "/etls")
+            # Reaproveita o mesmo volume /etls montado no worker sempre que possivel,
+            # evitando rebuild da imagem etls:latest a cada nova pipeline.
+            etl_host_path = os.getenv("ETL_HOST_PATH", "").strip()
+            current_container = os.getenv("HOSTNAME", "").strip()
+            etl_network = os.getenv("ETL_DOCKER_NETWORK", "etl-manager_default")
 
             # Limites de recursos (opcionais via ENV)
             mem_limit = os.getenv("ETL_CONTAINER_MEM_LIMIT", None)
@@ -121,10 +124,16 @@ def execute_pipeline(self, run_id):
                     "DB_HOST": "postgres",
                     "REDIS_URL": redis_url,
                 },
-                "volumes": {etl_path: {"bind": "/etls", "mode": "rw"}},
-                "network": "etl-manager_default",
+                "network": etl_network,
                 "remove": True,
             }
+
+            if etl_host_path:
+                run_kwargs["volumes"] = {
+                    etl_host_path: {"bind": "/etls", "mode": "rw"}
+                }
+            elif current_container:
+                run_kwargs["volumes_from"] = [current_container]
 
             if mem_limit:
                 run_kwargs["mem_limit"] = mem_limit

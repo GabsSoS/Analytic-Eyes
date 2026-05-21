@@ -51,7 +51,8 @@ services:
       - "8000:8000"
     environment:
       - DEBUG=True
-      - ETL_PATH=${ETL_PATH}
+      - ETL_HOST_PATH=${ETL_HOST_PATH}
+      - ETL_DOCKER_NETWORK=etl-manager_default
     depends_on:
       - redis
       - postgres
@@ -66,7 +67,8 @@ services:
       - ./etls:/etls
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - ETL_PATH=${ETL_PATH}
+      - ETL_HOST_PATH=${ETL_HOST_PATH}
+      - ETL_DOCKER_NETWORK=etl-manager_default
       - CELERY_WORKER_CONCURRENCY=5
       - ETL_CONTAINER_MEM_LIMIT=512m
       - ETL_CONTAINER_CPUSET=
@@ -85,4 +87,5 @@ volumes:
 
 networks:
   etl-network:
+    name: etl-manager_default
     driver: bridge
