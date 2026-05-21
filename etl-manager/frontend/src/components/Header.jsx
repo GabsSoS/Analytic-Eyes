@@ -1,6 +1,6 @@
 import Logo from "../assets/components/Logo 2.png"
 import Lupa  from "../assets/components/Lupa.png"
-import Info from "../assets/components/Info app.png"
+import Info from "../assets/components/Info App.png"
 import { Link } from 'react-router-dom'
 import './Header.css'
 

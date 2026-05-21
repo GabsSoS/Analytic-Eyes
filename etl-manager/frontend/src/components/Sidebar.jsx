@@ -1,8 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import Menu from "../assets/components/Menu.png";
-import HomeAtiva from "../assets/components/Home Ativa.png";
-import HomeInativa from "../assets/components/Home Desativada.png";
+import HomeAtiva from "../assets/components/home Ativa.png";
+import HomeInativa from "../assets/components/home Desativada.png";
 import CriarAtivo from "../assets/components/Criar Ativa.png";
 import CriarDesativado from "../assets/components/Criar Desativada.png";
 import FluxoAtivo from "../assets/components/Fluxos Ativa.png";
