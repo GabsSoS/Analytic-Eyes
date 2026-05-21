@@ -123,6 +123,7 @@ img {
   position: absolute;
   left: 12px;
   width: 24px;
+  top: -5px;
   height: 24px;
   z-index: 2;
 }
@@ -130,6 +131,7 @@ img {
 .password-icon {
   position: absolute;
   left: 12px;
+  top: -5px;
   width: 24px;
   height: 24px;
   z-index: 2;
