@@ -3,9 +3,10 @@ import logging
 import os
 import redis
 from celery import shared_task
+from django.db import transaction
 from django.utils import timezone
 from django.conf import settings
-from .models import Pipeline, PipelineRun
+from .models import Pipeline, PipelineRun, PipelineSchedule
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,64 @@ def trigger_anchored_pipelines(source_run):
                 target_pipeline.id,
                 source_pipeline.id,
             )
+
+
+@shared_task
+def dispatch_due_schedules():
+    redis_url = getattr(settings, "CELERY_BROKER_URL", "redis://localhost:6379/0")
+    redis_client = redis.from_url(redis_url)
+    scheduler_lock = redis_client.lock(
+        "pipeline-schedule-dispatch-lock",
+        blocking_timeout=1,
+        timeout=55,
+    )
+
+    acquired = scheduler_lock.acquire(blocking=False)
+    if not acquired:
+        logger.info("Despacho de schedules ignorado porque outra execucao do beat ja esta em andamento")
+        return 0
+
+    dispatched_count = 0
+
+    try:
+        now = timezone.now()
+        due_schedule_ids = list(
+            PipelineSchedule.objects.filter(
+                enabled=True,
+                next_run_at__isnull=False,
+                next_run_at__lte=now,
+            ).values_list("id", flat=True)
+        )
+
+        for schedule_id in due_schedule_ids:
+            with transaction.atomic():
+                schedule = (
+                    PipelineSchedule.objects.select_related("pipeline", "created_by", "pipeline__owner")
+                    .filter(id=schedule_id)
+                    .first()
+                )
+
+                if (
+                    schedule is None
+                    or not schedule.enabled
+                    or schedule.next_run_at is None
+                    or schedule.next_run_at > timezone.now()
+                ):
+                    continue
+
+                trigger_time = timezone.now()
+                schedule.mark_triggered(trigger_time=trigger_time)
+
+                triggered_by = schedule.created_by or schedule.pipeline.owner
+                queue_pipeline_execution(schedule.pipeline, triggered_by)
+                dispatched_count += 1
+
+        return dispatched_count
+    finally:
+        try:
+            scheduler_lock.release()
+        except Exception:
+            logger.exception("Erro liberando lock do scheduler de pipelines")
 
 
 @shared_task(

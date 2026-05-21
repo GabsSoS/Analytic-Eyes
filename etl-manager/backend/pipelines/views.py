@@ -11,7 +11,7 @@ from rest_framework.authtoken.models import Token
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 import json
-from .models import Pipeline, PipelinePermission, PipelineRun, storage
+from .models import Pipeline, PipelinePermission, PipelineRun, PipelineSchedule, storage
 from .tasks import queue_pipeline_execution
 from django.db.models import Count
 
@@ -58,6 +58,8 @@ def serialize_pipeline_details(pipeline):
     except Exception:
         main_code = ""
 
+    schedule = getattr(pipeline, "schedule", None)
+
     return {
         "id": pipeline.id,
         "name": pipeline.name,
@@ -70,6 +72,15 @@ def serialize_pipeline_details(pipeline):
         "trigger_sources": trigger_sources,
         "trigger_targets": trigger_targets,
         "main_code": main_code,
+        "schedule": schedule.to_dict() if schedule else {
+            "enabled": False,
+            "days_of_week": [],
+            "hour": 0,
+            "minute": 0,
+            "timezone": PipelineSchedule.default_timezone_name(),
+            "next_run_at": None,
+            "last_triggered_at": None,
+        },
     }
 
 # Função auxiliar para parsear o campo de colaboradores enviado no corpo da requisição. Aceita uma string JSON ou uma lista de objetos. Retorna uma lista de dicionários com objetos User e permissão.
@@ -156,6 +167,58 @@ def parse_trigger_sources_payload(raw_pipeline_ids, user, current_pipeline=None)
         )
 
     return [pipelines_by_id[pipeline_id] for pipeline_id in normalized_ids]
+
+
+def parse_schedule_payload(raw_schedule):
+    if raw_schedule in (None, ""):
+        return None
+
+    if isinstance(raw_schedule, str):
+        try:
+            raw_schedule = json.loads(raw_schedule)
+        except json.JSONDecodeError:
+            raise ValueError("Campo 'schedule' deve ser um JSON valido")
+
+    if not isinstance(raw_schedule, dict):
+        raise ValueError("Campo 'schedule' deve ser um objeto")
+
+    enabled = bool(raw_schedule.get("enabled", False))
+    days_of_week = PipelineSchedule.normalize_days_of_week(
+        raw_schedule.get("days_of_week", [])
+    )
+
+    hour = raw_schedule.get("hour", 0)
+    minute = raw_schedule.get("minute", 0)
+
+    try:
+        hour = int(hour)
+    except (TypeError, ValueError):
+        raise ValueError("Campo 'hour' deve ser um inteiro")
+
+    try:
+        minute = int(minute)
+    except (TypeError, ValueError):
+        raise ValueError("Campo 'minute' deve ser um inteiro")
+
+    timezone_name = raw_schedule.get("timezone") or PipelineSchedule.default_timezone_name()
+    PipelineSchedule.validate_timezone_name(timezone_name)
+
+    if enabled and not days_of_week:
+        raise ValueError("Selecione ao menos um dia para ativar o agendamento")
+
+    if hour < 0 or hour > 23:
+        raise ValueError("Campo 'hour' deve estar entre 0 e 23")
+
+    if minute < 0 or minute > 59:
+        raise ValueError("Campo 'minute' deve estar entre 0 e 59")
+
+    return {
+        "enabled": enabled,
+        "days_of_week": days_of_week,
+        "hour": hour,
+        "minute": minute,
+        "timezone_name": timezone_name,
+    }
 
 #view para realizar login
 @api_view(["POST"])
@@ -294,6 +357,7 @@ def pipeline_create(request):
     main_code = request.data.get("main_code", "")
     script_file = request.FILES.get("script")
     trigger_sources = None
+    schedule = None
 
     if not name:
         return JsonResponse({"error": "O campo 'name' é obrigatório"}, status=400)
@@ -305,6 +369,7 @@ def pipeline_create(request):
             request.data.get("anchor_pipeline_ids"),
             request.user,
         )
+        schedule = parse_schedule_payload(request.data.get("schedule"))
         
         # Se não foi fornecido código, usar template padrão
         if not main_code.strip():
@@ -343,6 +408,13 @@ if __name__ == "__main__":
             main_code=main_code,
             trigger_sources=trigger_sources,
         )
+
+        if schedule is not None:
+            PipelineSchedule.upsert_for_pipeline(
+                pipeline=pipeline,
+                created_by=request.user,
+                **schedule,
+            )
         
         return Response(
             {"id": pipeline.id, "name": pipeline.name},
@@ -496,6 +568,7 @@ def update_pipeline(request, pipeline_id):
             request.user,
             current_pipeline=pipeline,
         )
+        schedule = parse_schedule_payload(request.data.get("schedule"))
         script_file = request.FILES.get("script")
         main_code = request.data.get("main_code")
 
@@ -517,6 +590,7 @@ def update_pipeline(request, pipeline_id):
             collaborators=collaborators,
             main_code=main_code,
             trigger_sources=trigger_sources,
+            schedule=schedule,
         )
     except UnicodeDecodeError:
         return Response(
@@ -704,5 +778,3 @@ def pipeline_delete(request, pipeline_id):
         return Response({"message": "Pipeline deletada com sucesso"}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-

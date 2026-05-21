@@ -16,6 +16,15 @@ const DETALHE_INICIAL = {
   collaborators: [],
   trigger_sources: [],
   trigger_targets: [],
+  schedule: {
+    enabled: false,
+    days_of_week: [],
+    hour: 0,
+    minute: 0,
+    timezone: "America/Sao_Paulo",
+    next_run_at: null,
+    last_triggered_at: null,
+  },
 };
 
 const PERMISSOES_COLABORADOR = ["edit", "execute", "view"];
@@ -24,6 +33,16 @@ const PERMISSOES_LABELS = {
   execute: "Executar",
   view: "Visualizar",
 };
+
+const DIAS_SEMANA = [
+  { value: 0, label: "Seg" },
+  { value: 1, label: "Ter" },
+  { value: 2, label: "Qua" },
+  { value: 3, label: "Qui" },
+  { value: 4, label: "Sex" },
+  { value: 5, label: "Sab" },
+  { value: 6, label: "Dom" },
+];
 
 const normalizarDetalhes = (dadosDetalhes) => ({
   ...DETALHE_INICIAL,
@@ -37,6 +56,15 @@ const normalizarDetalhes = (dadosDetalhes) => ({
   trigger_targets: Array.isArray(dadosDetalhes?.trigger_targets)
     ? dadosDetalhes.trigger_targets
     : [],
+  schedule: {
+    ...DETALHE_INICIAL.schedule,
+    ...(dadosDetalhes?.schedule ?? {}),
+    days_of_week: Array.isArray(dadosDetalhes?.schedule?.days_of_week)
+      ? dadosDetalhes.schedule.days_of_week
+          .map((dia) => Number(dia))
+          .filter((dia) => Number.isInteger(dia) && dia >= 0 && dia <= 6)
+      : [],
+  },
 });
 
 const formatarDataHora = (valor) => {
@@ -106,6 +134,25 @@ const formatarDuracao = (inicio, fim) => {
     .join(":");
 };
 
+const formatarHorario = (hour, minute) =>
+  `${String(hour ?? 0).padStart(2, "0")}:${String(minute ?? 0).padStart(2, "0")}`;
+
+const formatarDiasSemana = (dias) => {
+  const diasSelecionados = Array.isArray(dias)
+    ? DIAS_SEMANA.filter((dia) => dias.includes(dia.value)).map((dia) => dia.label)
+    : [];
+
+  if (diasSelecionados.length === 0) {
+    return "Nenhum dia selecionado";
+  }
+
+  if (diasSelecionados.length === DIAS_SEMANA.length) {
+    return "Todos os dias";
+  }
+
+  return diasSelecionados.join(", ");
+};
+
 const obterStatusVisual = (status) => {
   const statusNormalizado = String(status ?? "").toUpperCase();
 
@@ -161,6 +208,13 @@ function Details() {
     owner: "",
     collaborators: [],
     trigger_source_ids: [],
+    schedule: {
+      enabled: false,
+      days_of_week: [],
+      hour: 0,
+      minute: 0,
+      timezone: "America/Sao_Paulo",
+    },
   });
 
   const buscarDados = useCallback(async () => {
@@ -271,6 +325,17 @@ function Details() {
     [formEdicao.trigger_source_ids, id, pipelinesDisponiveis]
   );
 
+  const resumoAgendamento = useMemo(() => {
+    if (!detalhes.schedule?.enabled) {
+      return "Agendamento desativado";
+    }
+
+    return `${formatarDiasSemana(detalhes.schedule.days_of_week)} as ${formatarHorario(
+      detalhes.schedule.hour,
+      detalhes.schedule.minute
+    )}`;
+  }, [detalhes.schedule]);
+
   const abrirModalEdicao = useCallback(async () => {
     setErroEdicao("");
     setFormEdicao({
@@ -288,6 +353,17 @@ function Details() {
             .map((pipeline) => Number(pipeline.id))
             .filter((pipelineId) => Number.isFinite(pipelineId))
         : [],
+      schedule: {
+        enabled: Boolean(detalhes.schedule?.enabled),
+        days_of_week: Array.isArray(detalhes.schedule?.days_of_week)
+          ? detalhes.schedule.days_of_week
+              .map((dia) => Number(dia))
+              .filter((dia) => Number.isInteger(dia) && dia >= 0 && dia <= 6)
+          : [],
+        hour: Number(detalhes.schedule?.hour ?? 0),
+        minute: Number(detalhes.schedule?.minute ?? 0),
+        timezone: detalhes.schedule?.timezone || "America/Sao_Paulo",
+      },
     });
     setNovoAnchorId("");
     setModalEdicaoAberto(true);
@@ -346,6 +422,35 @@ function Details() {
       ...atual,
       [campo]: valor,
     }));
+  };
+
+  const atualizarCampoSchedule = (campo, valor) => {
+    setFormEdicao((atual) => ({
+      ...atual,
+      schedule: {
+        ...atual.schedule,
+        [campo]: valor,
+      },
+    }));
+  };
+
+  const alternarDiaSchedule = (dia) => {
+    setFormEdicao((atual) => {
+      const diasAtuais = Array.isArray(atual.schedule.days_of_week)
+        ? atual.schedule.days_of_week
+        : [];
+      const jaSelecionado = diasAtuais.includes(dia);
+
+      return {
+        ...atual,
+        schedule: {
+          ...atual.schedule,
+          days_of_week: jaSelecionado
+            ? diasAtuais.filter((valorAtual) => valorAtual !== dia)
+            : [...diasAtuais, dia].sort((diaA, diaB) => diaA - diaB),
+        },
+      };
+    });
   };
 
   const atualizarColaborador = (index, campo, valor) => {
@@ -430,6 +535,29 @@ function Details() {
       usernamesUnicos.add(collaborator.username);
     }
 
+    const scheduleHour = Number(formEdicao.schedule.hour);
+    const scheduleMinute = Number(formEdicao.schedule.minute);
+    const scheduleDays = Array.isArray(formEdicao.schedule.days_of_week)
+      ? [...formEdicao.schedule.days_of_week].sort((diaA, diaB) => diaA - diaB)
+      : [];
+
+    if (formEdicao.schedule.enabled && scheduleDays.length === 0) {
+      setErroEdicao("Selecione pelo menos um dia para ativar o agendamento.");
+      return;
+    }
+
+    if (
+      Number.isNaN(scheduleHour) ||
+      scheduleHour < 0 ||
+      scheduleHour > 23 ||
+      Number.isNaN(scheduleMinute) ||
+      scheduleMinute < 0 ||
+      scheduleMinute > 59
+    ) {
+      setErroEdicao("Informe um horario valido para o agendamento.");
+      return;
+    }
+
     setSalvandoEdicao(true);
     setErroEdicao("");
 
@@ -438,6 +566,13 @@ function Details() {
         name: nome,
         description: formEdicao.description.trim(),
         anchor_pipeline_ids: formEdicao.trigger_source_ids,
+        schedule: {
+          enabled: Boolean(formEdicao.schedule.enabled),
+          days_of_week: scheduleDays,
+          hour: scheduleHour,
+          minute: scheduleMinute,
+          timezone: formEdicao.schedule.timezone || "America/Sao_Paulo",
+        },
       };
 
       if (formEdicao.owner.trim() && formEdicao.owner.trim() !== detalhes.owner) {
@@ -798,6 +933,38 @@ function Details() {
                   )}
                 </div>
               </section>
+
+              <section className="details-card">
+                <div className="details-card-header">
+                  <h2>Agendamento</h2>
+                </div>
+
+                <div className="details-anchor-section">
+                  <span className="details-label">Resumo</span>
+                  <strong className="details-value muted">{resumoAgendamento}</strong>
+                </div>
+
+                <div className="details-anchor-section">
+                  <span className="details-label">Timezone</span>
+                  <strong className="details-value muted">
+                    {detalhes.schedule?.timezone || "America/Sao_Paulo"}
+                  </strong>
+                </div>
+
+                <div className="details-anchor-section">
+                  <span className="details-label">Proxima execucao</span>
+                  <strong className="details-value muted">
+                    {formatarDataHora(detalhes.schedule?.next_run_at)}
+                  </strong>
+                </div>
+
+                <div className="details-anchor-section">
+                  <span className="details-label">Ultimo disparo automatico</span>
+                  <strong className="details-value muted">
+                    {formatarDataHora(detalhes.schedule?.last_triggered_at)}
+                  </strong>
+                </div>
+              </section>
             </aside>
           </div>
         )}
@@ -935,6 +1102,89 @@ function Details() {
                     ))}
                   </select>
                 </label>
+
+                <div className="details-edit-collaborators">
+                  <div className="details-edit-collaborators-header">
+                    <span>Agendamento automatico</span>
+                  </div>
+
+                  <label className="details-schedule-toggle">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formEdicao.schedule.enabled)}
+                      onChange={(event) =>
+                        atualizarCampoSchedule("enabled", event.target.checked)
+                      }
+                    />
+                    <span>Ativar execucao recorrente</span>
+                  </label>
+
+                  <div className="details-schedule-days">
+                    {DIAS_SEMANA.map((dia) => {
+                      const selecionado = formEdicao.schedule.days_of_week.includes(dia.value);
+
+                      return (
+                        <button
+                          key={dia.value}
+                          type="button"
+                          className={`details-schedule-day ${selecionado ? "selected" : ""}`}
+                          onClick={() => alternarDiaSchedule(dia.value)}
+                        >
+                          {dia.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="details-schedule-grid">
+                    <label className="details-edit-field">
+                      <span>Hora</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="23"
+                        value={formEdicao.schedule.hour}
+                        onChange={(event) =>
+                          atualizarCampoSchedule("hour", event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="details-edit-field">
+                      <span>Minuto</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={formEdicao.schedule.minute}
+                        onChange={(event) =>
+                          atualizarCampoSchedule("minute", event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="details-edit-field">
+                      <span>Timezone</span>
+                      <input
+                        type="text"
+                        value={formEdicao.schedule.timezone}
+                        onChange={(event) =>
+                          atualizarCampoSchedule("timezone", event.target.value)
+                        }
+                        placeholder="America/Sao_Paulo"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="details-schedule-summary">
+                    {formEdicao.schedule.enabled
+                      ? `${formatarDiasSemana(formEdicao.schedule.days_of_week)} as ${formatarHorario(
+                          Number(formEdicao.schedule.hour ?? 0),
+                          Number(formEdicao.schedule.minute ?? 0)
+                        )}`
+                      : "Agendamento desativado"}
+                  </div>
+                </div>
 
                 <div className="details-edit-collaborators">
                   <div className="details-edit-collaborators-header">

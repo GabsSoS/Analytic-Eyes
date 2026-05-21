@@ -494,6 +494,58 @@
   align-items: center;
 }
 
+.details-schedule-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #334155;
+  font-size: 0.94rem;
+}
+
+.details-schedule-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f7cf6;
+}
+
+.details-schedule-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.details-schedule-day {
+  border: 1px solid #d0d7e2;
+  background: #ffffff;
+  color: #475569;
+  border-radius: 999px;
+  padding: 10px 0;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.details-schedule-day.selected {
+  border-color: #2f7cf6;
+  background: #eaf2ff;
+  color: #0f4fc9;
+}
+
+.details-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.details-schedule-summary {
+  border: 1px solid #dbe0e7;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 12px 14px;
+  color: #334155;
+  font-size: 0.93rem;
+}
+
 .details-edit-collaborator-row {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(140px, 0.8fr) auto;
@@ -645,6 +697,11 @@
   }
 
   .details-anchor-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .details-schedule-days,
+  .details-schedule-grid {
     grid-template-columns: 1fr;
   }
 

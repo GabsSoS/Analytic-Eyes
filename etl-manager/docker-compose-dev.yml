@@ -78,6 +78,22 @@ services:
     networks:
       - etl-network
 
+  beat:
+    build: ./backend
+    command: sh -c "celery -A config beat -l info"
+    volumes:
+      - ./backend:/app
+      - ./etls:/etls
+    environment:
+      - ETL_HOST_PATH=${ETL_HOST_PATH}
+      - ETL_DOCKER_NETWORK=etl-manager_default
+    depends_on:
+      - redis
+      - postgres
+      - backend
+    networks:
+      - etl-network
+
 
 
 

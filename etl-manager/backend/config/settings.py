@@ -161,6 +161,13 @@ CORS_ALLOW_CREDENTIALS = True
 CELERY_BROKER_URL = "redis://redis:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "dispatch-due-pipeline-schedules": {
+        "task": "pipelines.tasks.dispatch_due_schedules",
+        "schedule": 60.0,
+    }
+}
 
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
