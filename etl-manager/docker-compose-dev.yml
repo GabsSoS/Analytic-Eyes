@@ -61,7 +61,7 @@ services:
 
   worker:
     build: ./backend
-    command: sh -c "celery -A config worker -l info --concurrency=5 --prefetch-multiplier=1 -Ofair --max-tasks-per-child=50"
+    command: sh -c "celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-30} --prefetch-multiplier=1 -Ofair --max-tasks-per-child=50"
     volumes:
       - ./backend:/app
       - ./etls:/etls
@@ -69,7 +69,7 @@ services:
     environment:
       - ETL_HOST_PATH=${ETL_HOST_PATH}
       - ETL_DOCKER_NETWORK=etl-manager_default
-      - CELERY_WORKER_CONCURRENCY=5
+      - CELERY_WORKER_CONCURRENCY=30
       - ETL_CONTAINER_MEM_LIMIT=512m
       - ETL_CONTAINER_CPUSET=
     depends_on:
