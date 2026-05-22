@@ -58,6 +58,8 @@ def serialize_pipeline_details(pipeline):
     except Exception:
         main_code = ""
 
+    env_exists = storage.env_file_exists(pipeline_name)
+
     schedule = getattr(pipeline, "schedule", None)
 
     return {
@@ -72,6 +74,7 @@ def serialize_pipeline_details(pipeline):
         "trigger_sources": trigger_sources,
         "trigger_targets": trigger_targets,
         "main_code": main_code,
+        "env_exists": env_exists,
         "schedule": schedule.to_dict() if schedule else {
             "enabled": False,
             "days_of_week": [],
@@ -356,6 +359,7 @@ def pipeline_create(request):
     
     main_code = request.data.get("main_code", "")
     script_file = request.FILES.get("script")
+    env_file = request.FILES.get("env")
     trigger_sources = None
     schedule = None
 
@@ -363,8 +367,14 @@ def pipeline_create(request):
         return JsonResponse({"error": "O campo 'name' é obrigatório"}, status=400)
     
     try:
-        # Lê o arquivo e decodifica
+        # Lê o arquivo script e decodifica
         main_code = script_file.read().decode('utf-8') if script_file else main_code
+        
+        # Lê o arquivo .env e decodifica
+        env_content = None
+        if env_file:
+            env_content = env_file.read().decode('utf-8')
+        
         trigger_sources = parse_trigger_sources_payload(
             request.data.get("anchor_pipeline_ids"),
             request.user,
@@ -399,6 +409,12 @@ if __name__ == "__main__":
                 status=400
             )
         
+        if env_file and env_file.size > 1_000_000:  # 1MB
+            return Response(
+                {"error": "Arquivo .env maior que 1MB"},
+                status=400
+            )
+        
         # Cria a pipeline normalmente
         pipeline = Pipeline.create_pipeline(
             name=name,
@@ -407,6 +423,7 @@ if __name__ == "__main__":
             lib=lib,
             main_code=main_code,
             trigger_sources=trigger_sources,
+            env_content=env_content,
         )
 
         if schedule is not None:
@@ -428,7 +445,6 @@ if __name__ == "__main__":
         )
     except Exception as e:
         return Response({"error": str(e)}, status=400)
-    
 # View para execução de pipeline (POST)
 @extend_schema(
     operation_id='trigger_pipeline',
@@ -570,12 +586,19 @@ def update_pipeline(request, pipeline_id):
         )
         schedule = parse_schedule_payload(request.data.get("schedule"))
         script_file = request.FILES.get("script")
+        env_file = request.FILES.get("env")
         main_code = request.data.get("main_code")
 
         if script_file is not None:
             if script_file.size > 5_000_000:
                 return Response({"error": "Arquivo maior que 5MB"}, status=status.HTTP_400_BAD_REQUEST)
             main_code = script_file.read().decode("utf-8")
+
+        env_content = None
+        if env_file is not None:
+            if env_file.size > 1_000_000:
+                return Response({"error": "Arquivo .env maior que 1MB"}, status=status.HTTP_400_BAD_REQUEST)
+            env_content = env_file.read().decode("utf-8")
 
         next_status = request.data.get("status")
         if next_status is not None:
@@ -591,6 +614,7 @@ def update_pipeline(request, pipeline_id):
             main_code=main_code,
             trigger_sources=trigger_sources,
             schedule=schedule,
+            env_content=env_content,
         )
     except UnicodeDecodeError:
         return Response(
@@ -778,3 +802,93 @@ def pipeline_delete(request, pipeline_id):
         return Response({"message": "Pipeline deletada com sucesso"}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# View para gerenciar arquivo .env de uma pipeline (GET ou POST)
+@extend_schema(
+    operation_id='manage_pipeline_env',
+    description='GET: Baixa o arquivo .env de uma pipeline. POST: Faz upload de um novo arquivo .env (substitui o existente)',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline')
+    ],
+    request=OpenApiTypes.OBJECT,
+    responses={200: OpenApiTypes.OBJECT, 201: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["GET", "POST"])
+@parser_classes([MultiPartParser, FormParser])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def manage_pipeline_env(request, pipeline_id):
+    from django.http import FileResponse
+    
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
+    
+    if request.method == "GET":
+        # Download do arquivo .env
+        if not pipeline.can_execute(request.user):
+            return Response(
+                {"error": "Usuário não tem permissão para acessar esta pipeline"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
+        
+        try:
+            env_content = storage.get_env_file(pipeline_name)
+            return Response(
+                {"env_content": env_content, "exists": True},
+                status=status.HTTP_200_OK
+            )
+        except FileNotFoundError:
+            return Response(
+                {"env_content": "", "exists": False},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    elif request.method == "POST":
+        # Upload de novo arquivo .env
+        if not pipeline.can_edit(request.user):
+            return Response(
+                {"error": "Usuário não tem permissão para editar esta pipeline"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        env_file = request.FILES.get("env")
+        
+        if not env_file:
+            return Response(
+                {"error": "Campo 'env' é obrigatório"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            if env_file.size > 1_000_000:  # 1MB
+                return Response(
+                    {"error": "Arquivo .env maior que 1MB"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            env_content = env_file.read().decode("utf-8")
+            pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
+            storage.save_env_file(pipeline_name, env_content)
+            
+            return Response(
+                {"message": "Arquivo .env atualizado com sucesso"},
+                status=status.HTTP_201_CREATED
+            )
+        
+        except UnicodeDecodeError:
+            return Response(
+                {"error": "Arquivo não é UTF-8 válido"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )

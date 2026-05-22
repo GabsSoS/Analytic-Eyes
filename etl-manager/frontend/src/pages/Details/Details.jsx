@@ -185,6 +185,7 @@ function Details() {
   const [modalHistoricoAberto, setModalHistoricoAberto] = useState(false);
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const [modalCodigoAberto, setModalCodigoAberto] = useState(false);
+  const [modalEnvAberto, setModalEnvAberto] = useState(false);
   const [modalDeleteAberto, setModalDeleteAberto] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -202,6 +203,9 @@ function Details() {
   const [erroCodigo, setErroCodigo] = useState("");
   const [codigoPipe, setCodigoPipe] = useState("");
   const [novoAnchorId, setNovoAnchorId] = useState("");
+  const [envFile, setEnvFile] = useState(null);
+  const [erroEnv, setErroEnv] = useState("");
+  const [salvandoEnv, setSalvandoEnv] = useState(false);
   const [formEdicao, setFormEdicao] = useState({
     name: "",
     description: "",
@@ -710,6 +714,45 @@ function Details() {
     }
   };
 
+  const abrirModalEnv = () => {
+    setErroEnv("");
+    setEnvFile(null);
+    setModalEnvAberto(true);
+  };
+
+  const enviarArquivoEnv = async () => {
+    if (!envFile) {
+      setErroEnv("Selecione um arquivo .env para fazer upload.");
+      return;
+    }
+
+    setSalvandoEnv(true);
+    setErroEnv("");
+
+    try {
+      const formData = new FormData();
+      formData.append("env", envFile);
+
+      await api.post(`pipelines/${id}/env/`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      await buscarDados();
+      setModalEnvAberto(false);
+      setEnvFile(null);
+      window.alert("Arquivo .env atualizado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao fazer upload do .env:", error);
+      setErroEnv(
+        error.response?.data?.error || "Não foi possível fazer upload do arquivo .env."
+      );
+    } finally {
+      setSalvandoEnv(false);
+    }
+  };
+
   return (
     <section className="details-page">
       <div className="details-shell">
@@ -744,6 +787,13 @@ function Details() {
                       onClick={abrirModalCodigo}
                     >
                        Editar código
+                    </button>
+                    <button
+                      type="button"
+                      className="details-link-button"
+                      onClick={abrirModalEnv}
+                    >
+                       Gerenciar .env
                     </button>
                     <button
                       type="button"
@@ -1415,6 +1465,86 @@ function Details() {
                     disabled={salvandoCodigo || carregandoCodigo}
                   >
                     {salvandoCodigo ? "Salvando..." : "Salvar código"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalEnvAberto && (
+        <div
+          className="details-modal-overlay"
+          onClick={() => setModalEnvAberto(false)}
+          role="presentation"
+        >
+          <div
+            className="details-modal details-edit-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="details-env-modal-title"
+          >
+            <div className="details-card-header">
+              <h2 id="details-env-modal-title">Gerenciar arquivo .env</h2>
+              <button
+                type="button"
+                className="details-modal-close"
+                onClick={() => setModalEnvAberto(false)}
+                aria-label="Fechar gerenciamento de .env"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="details-modal-body">
+              <div className="details-edit-form">
+                <p>
+                  Faça upload de um novo arquivo <strong>.env</strong> para substituir o existente.
+                  {detalhes.env_exists ? " Atualmente há um arquivo .env nesta pipeline." : " Nenhum arquivo .env foi encontrado ainda."}
+                </p>
+
+                {erroEnv && (
+                  <div className="details-feedback error details-edit-feedback">
+                    {erroEnv}
+                  </div>
+                )}
+
+                <label className="details-edit-field env-upload-field">
+                  <span>Selecione arquivo .env</span>
+                  <div className="env-file-input-wrapper">
+                    <input
+                      type="file"
+                      accept=".env"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setEnvFile(e.target.files[0]);
+                        }
+                      }}
+                      className="env-file-input"
+                    />
+                    <span className="env-file-name">
+                      {envFile ? `✓ ${envFile.name}` : "Clique para selecionar"}
+                    </span>
+                  </div>
+                </label>
+
+                <div className="details-edit-actions">
+                  <button
+                    type="button"
+                    className="details-edit-secondary"
+                    onClick={() => setModalEnvAberto(false)}
+                    disabled={salvandoEnv}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="details-edit-primary"
+                    onClick={enviarArquivoEnv}
+                    disabled={salvandoEnv || !envFile}
+                  >
+                    {salvandoEnv ? "Enviando..." : "Fazer upload"}
                   </button>
                 </div>
               </div>

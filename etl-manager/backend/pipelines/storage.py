@@ -92,3 +92,35 @@ class LocalStorage(PipelineStorage):
 
         if old_pipeline_dir != new_pipeline_dir:
             old_pipeline_dir.rename(new_pipeline_dir)
+
+    def save_env_file(self, pipeline_name: str, content: str) -> None:
+        """Salva um arquivo .env na pipeline"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        pipeline_dir.mkdir(parents=True, exist_ok=True)
+        
+        env_file_path = pipeline_dir / ".env"
+        env_file_path.write_text(content)
+
+    def get_env_file(self, pipeline_name: str) -> str:
+        """Recupera um arquivo .env da pipeline"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        env_file_path = pipeline_dir / ".env"
+        
+        if not env_file_path.exists():
+            raise FileNotFoundError(f"Arquivo .env não encontrado em {pipeline_name}")
+        
+        return env_file_path.read_text()
+
+    def delete_env_file(self, pipeline_name: str) -> None:
+        """Deleta o arquivo .env da pipeline"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        env_file_path = pipeline_dir / ".env"
+        
+        if env_file_path.exists():
+            env_file_path.unlink()
+
+    def env_file_exists(self, pipeline_name: str) -> bool:
+        """Verifica se um arquivo .env existe na pipeline"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        env_file_path = pipeline_dir / ".env"
+        return env_file_path.exists()

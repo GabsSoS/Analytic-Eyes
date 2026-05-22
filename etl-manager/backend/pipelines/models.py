@@ -86,6 +86,7 @@ class Pipeline(models.Model):
         lib,
         main_code,
         trigger_sources=None,
+        env_content=None,
     ):
         
         script_code = '''import os
@@ -107,6 +108,10 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
             # Salva requirements.txt usando o storage
             requirements_content = "\n".join(lib)
             storage.save_script(pipeline_name, "requirements.txt", requirements_content)
+            
+            # Salva .env se fornecido
+            if env_content:
+                storage.save_env_file(pipeline_name, env_content)
             
         except Exception as e:
             raise Exception(f"Erro ao salvar scripts da pipeline: {str(e)}")
@@ -149,6 +154,7 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
         main_code=None,
         trigger_sources=None,
         schedule=None,
+        env_content=None,
     ):
         if not self.can_edit(acting_user):
             raise PermissionError("Usuario nao tem permissao para editar esta pipe")
@@ -185,6 +191,9 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
 
         if main_code is not None:
             storage.save_script(current_pipeline_name, "main.py", main_code)
+
+        if env_content is not None:
+            storage.save_env_file(current_pipeline_name, env_content)
 
         self.save()
 

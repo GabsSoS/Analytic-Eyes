@@ -709,3 +709,43 @@
     flex-direction: column-reverse;
   }
 }
+
+/* Estilos para upload de .env */
+.env-upload-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.env-file-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 2px dashed #d0d7e2;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 48px;
+}
+
+.env-file-input-wrapper:hover {
+  border-color: #2f7cf6;
+  background-color: #f0f5ff;
+}
+
+.env-file-input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.env-file-name {
+  flex: 1;
+  font-size: 0.94rem;
+  color: #666;
+  margin-left: 8px;
+}
