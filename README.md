@@ -1,234 +1,205 @@
 # Analytic Eyes
 
-Analytic Eyes é uma plataforma para orquestração e execução de pipelines ETL. O projeto inclui:
+Analytic Eyes é uma plataforma para gerenciar, orquestrar e executar pipelines ETL com foco em:
 
-- uma API backend em Django (com DRF) em [etl-manager/backend](etl-manager/backend)
-- uma interface web em React + Vite em [etl-manager/frontend](etl-manager/frontend)
-- um repositório local de ETLs em [etl-manager/etls](etl-manager/etls) e exemplos em [etls/](etls)
-- orquestração local via Docker Compose (`etl-manager/docker-compose-dev.yml`) e arquivos de produção
+- isolamento seguro de execução (containers);
+- agendamento e execução assíncrona via Celery;
+- controle de permissões por pipeline (owner/colaborador);
+- interface web para gerenciamento e API REST para automação.
 
-Este README descreve como executar o projeto localmente, arquitetura, endpoints principais e como contribuir.
-
----
-
-## Sumário
-
-- [Recursos principais](#recursos-principais)
-- [Estrutura do repositório](#estrutura-do-repositorio)
-- [Requisitos](#requisitos)
-- [Executando localmente (desenvolvimento)](#executando-localmente-desenvolvimento)
-- [Execução com Docker Compose](#execucao-com-docker-compose)
-- [Endpoints e documentação da API](#endpoints-e-documentacao-da-api)
-- [Estrutura de uma pipeline (ETL)](#estrutura-de-uma-pipeline-etl)
-- [Testes](#testes)
-- [Contribuição](#contribuicao)
-- [Licença](#licenca)
+O repositório contém o manager (API + frontend), repositório de ETLs e exemplos.
 
 ---
 
-## Recursos principais
+## Índice
 
-- Cadastro, edição e execução assíncrona de pipelines ETL.
-- Agendamento recorrente (Celery Beat) e execução por workers (Celery + Docker).
-- Controle de permissões: owners e colaboradores com níveis `view`, `execute` e `edit`.
-- Documentação OpenAPI (Swagger / ReDoc) disponível quando o backend está em execução.
+- [Visão geral](#visão-geral)
+- [Recursos](#recursos)
+- [Stack tecnológica](#stack-tecnologica)
+- [Arquitetura (resumo)](#arquitetura-resumo)
+- [Rotas principais da API](#rotas-principais-da-api)
+- [Executando localmente (quickstart)](#executando-localmente-quickstart)
+- [Desenvolvimento e testes](#desenvolvimento-e-testes)
+- [Variáveis de ambiente importantes](#variaveis-de-ambiente-importantes)
+- [Deploy / Produção (resumo)](#deploy--produção-resumo)
+- [Contribuição](#contribuição)
+- [Licença](#licença)
 
 ---
 
-## Estrutura do repositório
+## Visão geral
 
-- `etl-manager/` — orquestração, Docker Compose e subprojetos:
-  - `backend/` — Django app (contém `manage.py`, `requirements.txt`, `config/`);
-  - `frontend/` — React + Vite app (código fonte em `src/`);
-  - `etls/` — repositório local de ETLs usado pela plataforma;
-  # Analytic Eyes
+O objetivo do Analytic Eyes é permitir que times criem, compartilhem e executem pipelines ETL escritas em Python com dependências específicas, garantindo isolamento entre execuções e rastreabilidade dos runs.
 
-  Analytic Eyes é uma plataforma para orquestração e execução de pipelines ETL. O projeto inclui:
+Casos de uso típicos:
 
-  - uma API backend em Django (com DRF) em `etl-manager/backend`;
-  - uma interface web em React + Vite em `etl-manager/frontend`;
-  - um repositório local de ETLs em `etl-manager/etls` e exemplos em `etls/`;
-  - orquestração local via Docker Compose (`etl-manager/docker-compose-dev.yml`) e arquivos de produção.
+- consolidação diária de dados;
+- ingestão e transformação via scripts customizados;
+- encadeamento de pipelines (triggers entre pipelines);
+- execução on-demand para análises ad-hoc.
 
-  Este README descreve como executar o projeto localmente, arquitetura, endpoints principais e como contribuir.
+---
 
-  ---
+## Recursos
 
-  ## Sumário
+- Criação, edição, exclusão e execução de pipelines.
+- Upload/edição do código `main.py`, `requirements.txt` e `.env` por pipeline.
+- Agendamento recorrente (dias/horário) via Celery Beat.
+- Histórico de execuções (runs) com logs vinculados.
+- Controle de acesso por pipeline (view / execute / edit / owner).
+- Execução isolada em container Docker para cada run.
 
-  - [Recursos principais](#recursos-principais)
-  - [Estrutura do repositório](#estrutura-do-repositorio)
-  - [Requisitos](#requisitos)
-  - [Executando localmente (desenvolvimento)](#executando-localmente-desenvolvimento)
-  - [Execução com Docker Compose](#execucao-com-docker-compose)
-  - [Endpoints e documentação da API](#endpoints-e-documentacao-da-api)
-  - [Estrutura de uma pipeline (ETL)](#estrutura-de-uma-pipeline-etl)
-  - [Testes](#testes)
-  - [Contribuição](#contribuicao)
-  - [Licença](#licenca)
+---
 
-  ---
+## Stack tecnológica
 
-  ## Recursos principais
+- Backend: Django + Django REST Framework (`etl-manager/backend`)
+- Frontend: React + Vite (`etl-manager/frontend`)
+- Execução: Docker + Celery (Redis como broker)
+- Runner / exemplos: `etls/` (ex.: `etls/etl_vendas`)
 
-  - Cadastro, edição e execução assíncrona de pipelines ETL.
-  - Agendamento recorrente (Celery Beat) e execução por workers (Celery + Docker).
-  - Controle de permissões: owners e colaboradores com níveis `view`, `execute` e `edit`.
-  - Documentação OpenAPI (Swagger / ReDoc) disponível quando o backend está em execução.
+---
 
-  ---
+## Arquitetura (resumo)
 
-  ## Estrutura do repositório
+1. O usuário aciona a API (UI ou client).
+2. A API grava o run e enfileira a tarefa no Redis.
+3. Celery Worker puxa a tarefa e inicializa um container para executar a pipeline.
+4. Logs e status são persistidos e expostos via API.
 
-  - `etl-manager/` — orquestração, Docker Compose e subprojetos:
-    - `backend/` — Django app (contém `manage.py`, `requirements.txt`, `config/`);
-    - `frontend/` — React + Vite app (código fonte em `src/`);
-    - `etls/` — repositório local de ETLs usado pela plataforma;
-    - `docker-compose-dev.yml`, `docker-compose.prod.yml`, `nginx` etc.
-  - `etls/` — runner e exemplos de ETLs (ex.: `etls/etl_vendas/`).
+Diagrama (visão lógica):
 
-  ---
+```mermaid
+flowchart LR
+  UI[Frontend] -->|HTTP| API[Django API]
+  API -->|enqueue| Redis[(Redis)]
+  Redis --> Worker[Celery Worker]
+  Worker -->|start| Docker[Container Runtime]
+  Docker -->|logs/status| API
+  API --> DB[(SQLite/Postgres)]
+```
 
-  ## Requisitos
+---
 
-  - Docker e Docker Compose (recomendado para desenvolvimento integrado).
-  - Python 3.8+ (para desenvolvimento do backend, opcional se usar apenas Docker).
-  - Node.js 16+ (para desenvolvimento do frontend, opcional se usar apenas Docker).
+## Rotas principais da API
 
-  ---
+Base local: `http://localhost:8000/api/`
 
-  ## Executando localmente (desenvolvimento)
+Autenticação
 
-  Opções: via Docker Compose (recomendado) ou rodando serviços manualmente.
+- `POST /api/auth/login/` — login, retorna token
+- `GET /api/auth/me/` — dados do usuário autenticado
 
-  1) Usando Docker Compose (recomendado)
+Pipelines
 
-  ```bash
-  cd etl-manager
-  docker compose -f docker-compose-dev.yml up --build
-  ```
+- `GET /api/pipelines/` — lista pipelines visíveis ao usuário
+- `POST /api/pipelines/create/` — cria nova pipeline
+- `GET /api/pipelines/{id}/details/` — detalhes da pipeline
+- `PUT/PATCH /api/pipelines/{id}/update/` — atualiza metadados/código/colaboradores
+- `POST /api/pipelines/{id}/` — dispara execução assíncrona da pipeline
+- `POST/DELETE /api/pipelines/{id}/delete/` — exclui pipeline (confirmação)
+- `GET /api/pipelines/{id}/runs/` — histórico de execuções (runs)
+- `GET/POST /api/pipelines/{id}/env/` — consultar/substituir `.env`
 
-  Após subir, os endpoints padrão são:
+Infra / suporte
 
-  - Frontend: http://localhost:5173
-  - Backend (API): http://localhost:8000
-  - Swagger: http://localhost:8000/api/docs/
+- `GET /api/health/` — health check
 
-  2) Executando apenas o backend localmente (sem Docker)
+Observação: os paths e payloads completos estão definidos em [etl-manager/backend/config/urls.py](etl-manager/backend/config/urls.py) e nas views relacionadas.
 
-  ```bash
-  cd etl-manager/backend
-  python -m venv .venv
-  source .venv/Scripts/activate      # Windows: .venv\Scripts\activate
-  pip install -r requirements.txt
-  python manage.py migrate
-  python manage.py createsuperuser
-  python manage.py runserver
-  ```
+---
 
-  3) Executando o frontend localmente
+## Executando localmente (quickstart)
 
-  ```bash
-  cd etl-manager/frontend
-  npm install
-  npm run dev
-  ```
+Recomendado: Docker Compose (integra backend, frontend, redis, workers).
 
-  Observações:
-  - O backend aplica migracões automaticamente quando executado via Docker Compose (conforme configuração atual).
-  - Os ETLs persistem em `etl-manager/etls` e são montados nos containers de execução.
+```bash
+cd etl-manager
+docker compose -f docker-compose-dev.yml up --build
+```
 
-  ---
+Acessos locais:
 
-  ## Execução com Docker Compose (produção básica)
+- Frontend: http://localhost:5173
+- Backend / API: http://localhost:8000
+- Swagger: http://localhost:8000/api/docs/
 
-  Exemplo mínimo para produção (ajuste variáveis e volumes antes de usar):
+Se preferir executar apenas o backend localmente:
 
-  ```bash
-  cd etl-manager
-  docker compose -f docker-compose.prod.yml up -d --build
-  ```
+```bash
+cd etl-manager/backend
+python -m venv .venv
+. .venv/Scripts/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
 
-  Recomenda-se usar um registry privado, orquestrador (K8s/Helm/ArgoCD) e gerenciamento de segredos para ambientes reais.
+Para o frontend isolado:
 
-  ---
+```bash
+cd etl-manager/frontend
+npm install
+npm run dev
+```
 
-  ## Endpoints e documentação da API
+---
 
-  Base local: `http://localhost:8000/api/`
+## Desenvolvimento e testes
 
-  - Login: `POST /api/auth/login/` (retorna token)
-  - Me: `GET /api/auth/me/`
-  - Pipelines: `GET /api/pipelines/`, `POST /api/pipelines/create/`, `POST /api/pipelines/{id}/` (executar)
-  - Runs: `GET /api/pipelines/{id}/runs/`
+Executar os testes do backend:
 
-  Documentação interativa disponível em:
+```bash
+cd etl-manager/backend
+. .venv/Scripts/activate
+pip install -r requirements.txt
+python manage.py test
+```
 
-  - Swagger UI: `http://localhost:8000/api/docs/`
-  - OpenAPI Schema: `http://localhost:8000/api/schema/`
-  - ReDoc: `http://localhost:8000/api/redoc/`
+Logs do Celery e workers são exibidos nos serviços `worker` do Docker Compose.
 
-  Consulte os *views* e *urls* em [etl-manager/backend/config/urls.py](etl-manager/backend/config/urls.py).
+---
 
-  ---
+## Variáveis de ambiente importantes
 
-  ## Estrutura de uma pipeline (ETL)
+- `DJANGO_SECRET_KEY` — segredo do Django (não versionar)
+- `DATABASE_URL` — string de conexão (quando usar Postgres/RDS)
+- `REDIS_URL` — URL do Redis para Celery
+- `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`
 
-  Ao criar uma pipeline via API, a plataforma cria uma pasta em `etl-manager/etls/<nome>/` com arquivos típicos:
+Coloque essas variáveis em arquivos `.env` locais ou no gerenciador de secrets do ambiente.
 
-  ```text
-  main.py
-  config.py
-  requirements.txt
-  .env
-  ```
+---
 
-  Para exemplos de ETLs e runner, veja `etls/etl_vendas/` e `etls/runner.py`.
+## Deploy / Produção (resumo)
 
-  ---
+Evite usando o `docker-compose-dev.yml` em produção. Recomendações:
 
-  ## Testes
+- build e push das imagens para registry (ECR/GCR/DockerHub);
+- orquestração com Kubernetes (EKS/GKE) ou serviços gerenciados;
+- usar RDS/Aurora para banco em produção;
+- armazenar artefatos e logs em S3/Blob e usar solução de observabilidade (Prometheus/Grafana, ELK/Cloud logging);
+- gerenciar segredos com Secret Manager / Vault / ExternalSecrets.
 
-  Para executar os testes do backend:
+---
 
-  ```bash
-  cd etl-manager/backend
-  python -m venv .venv
-  source .venv/Scripts/activate
-  pip install -r requirements.txt
-  python manage.py test
-  ```
+## Contribuição
 
-  Se preferir, execute via Docker Compose (adapte serviços para incluir testes).
+1. Abra uma issue descrevendo a proposta.
+2. Abra um branch com prefixo `feature/` ou `fix/`.
+3. Adicione testes quando aplicável e siga o padrão do projeto.
 
-  ---
+Obrigado por contribuir — mantenha PRs pequenos e com descrição clara.
 
-  ## Contribuição
+---
 
-  Contribuições são bem-vindas. Sugestões:
+## Licença
 
-  1. Abra uma issue descrevendo o problema ou melhoria.
-  2. Crie um branch com o prefixo `feature/` ou `fix/`.
-  3. Abra um Pull Request com descrição clara e passos para testar.
+Este projeto está licenciado conforme o arquivo [LICENSE](LICENSE).
 
-  Recomenda-se seguir o padrão de commits e manter mudanças de infraestrutura em PRs separados.
+---
 
-  ---
+## Contato
 
-  ## Segurança e operação (resumo)
-
-  - Não versionar credenciais; usar mecanismos de secrets em produção.
-  - Revisar `ALLOWED_HOSTS`, `CORS` e outras configurações do Django antes do deploy.
-  - Proteger acesso ao Docker socket e limitar privilégios dos containers de execução.
-
-  ---
-
-  ## Licença
-
-  Este projeto está licenciado conforme o arquivo [LICENSE](LICENSE).
-
-  ---
-
-  ## Contato
-
-  Para dúvidas: abra uma issue ou entre em contato com os mantenedores do repositório.
+Abra uma issue para dúvidas, bugs ou propostas de melhoria.
