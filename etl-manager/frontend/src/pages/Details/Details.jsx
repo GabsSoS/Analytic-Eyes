@@ -203,7 +203,7 @@ function Details() {
   const [erroCodigo, setErroCodigo] = useState("");
   const [codigoPipe, setCodigoPipe] = useState("");
   const [novoAnchorId, setNovoAnchorId] = useState("");
-  const [envFile, setEnvFile] = useState(null);
+  const [configFile, setConfigFile] = useState(null);
   const [erroEnv, setErroEnv] = useState("");
   const [salvandoEnv, setSalvandoEnv] = useState(false);
   const [formEdicao, setFormEdicao] = useState({
@@ -716,13 +716,13 @@ function Details() {
 
   const abrirModalEnv = () => {
     setErroEnv("");
-    setEnvFile(null);
+    setConfigFile(null);
     setModalEnvAberto(true);
   };
 
   const enviarArquivoEnv = async () => {
-    if (!envFile) {
-      setErroEnv("Selecione um arquivo .env para fazer upload.");
+    if (!configFile) {
+      setErroEnv("Selecione um arquivo .env ou config.ini para fazer upload.");
       return;
     }
 
@@ -731,7 +731,8 @@ function Details() {
 
     try {
       const formData = new FormData();
-      formData.append("env", envFile);
+      const fieldName = configFile.name.toLowerCase().endsWith(".ini") ? "config" : "env";
+      formData.append(fieldName, configFile);
 
       await api.post(`pipelines/${id}/env/`, formData, {
         headers: {
@@ -741,12 +742,12 @@ function Details() {
 
       await buscarDados();
       setModalEnvAberto(false);
-      setEnvFile(null);
-      window.alert("Arquivo .env atualizado com sucesso!");
+      setConfigFile(null);
+      window.alert("Arquivo de configuração atualizado com sucesso!");
     } catch (error) {
-      console.error("Erro ao fazer upload do .env:", error);
+      console.error("Erro ao fazer upload do arquivo de configuração:", error);
       setErroEnv(
-        error.response?.data?.error || "Não foi possível fazer upload do arquivo .env."
+        error.response?.data?.error || "Não foi possível fazer upload do arquivo de configuração."
       );
     } finally {
       setSalvandoEnv(false);
@@ -793,7 +794,7 @@ function Details() {
                       className="details-link-button"
                       onClick={abrirModalEnv}
                     >
-                       Gerenciar .env
+                       Gerenciar arquivo de configuração
                     </button>
                     <button
                       type="button"
@@ -1486,12 +1487,12 @@ function Details() {
             aria-labelledby="details-env-modal-title"
           >
             <div className="details-card-header">
-              <h2 id="details-env-modal-title">Gerenciar arquivo .env</h2>
+              <h2 id="details-env-modal-title">Gerenciar arquivo de configuração</h2>
               <button
                 type="button"
                 className="details-modal-close"
                 onClick={() => setModalEnvAberto(false)}
-                aria-label="Fechar gerenciamento de .env"
+                aria-label="Fechar gerenciamento de arquivo de configuração"
               >
                 ×
               </button>
@@ -1500,8 +1501,8 @@ function Details() {
             <div className="details-modal-body">
               <div className="details-edit-form">
                 <p>
-                  Faça upload de um novo arquivo <strong>.env</strong> para substituir o existente.
-                  {detalhes.env_exists ? " Atualmente há um arquivo .env nesta pipeline." : " Nenhum arquivo .env foi encontrado ainda."}
+                  Faça upload de um novo arquivo <strong>.env</strong> ou <strong>config.ini</strong> para substituir o existente.
+                  {detalhes.env_exists || detalhes.config_exists ? " Atualmente há um arquivo de configuração nesta pipeline." : " Nenhum arquivo de configuração foi encontrado ainda."}
                 </p>
 
                 {erroEnv && (
@@ -1511,20 +1512,20 @@ function Details() {
                 )}
 
                 <label className="details-edit-field env-upload-field">
-                  <span>Selecione arquivo .env</span>
+                  <span>Selecione arquivo .env ou config.ini</span>
                   <div className="env-file-input-wrapper">
                     <input
                       type="file"
-                      accept=".env"
+                      accept=".env,.ini"
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
-                          setEnvFile(e.target.files[0]);
+                          setConfigFile(e.target.files[0]);
                         }
                       }}
                       className="env-file-input"
                     />
                     <span className="env-file-name">
-                      {envFile ? `✓ ${envFile.name}` : "Clique para selecionar"}
+                      {configFile ? `✓ ${configFile.name}` : "Clique para selecionar"}
                     </span>
                   </div>
                 </label>
@@ -1542,7 +1543,7 @@ function Details() {
                     type="button"
                     className="details-edit-primary"
                     onClick={enviarArquivoEnv}
-                    disabled={salvandoEnv || !envFile}
+                    disabled={salvandoEnv || !configFile}
                   >
                     {salvandoEnv ? "Enviando..." : "Fazer upload"}
                   </button>

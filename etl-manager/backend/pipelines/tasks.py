@@ -10,8 +10,12 @@ from .models import Pipeline, PipelineRun, PipelineSchedule
 
 logger = logging.getLogger(__name__)
 
+# Tarefas de orquestração de pipelines: enfileira execuções, dispara execuções agendadas
+# e coordena a execução dentro de containers isolados.
+
 
 def queue_pipeline_execution(pipeline, triggered_by):
+    # Evita disparar uma nova execução se já existe uma pipeline pendente ou em execução
     if PipelineRun.objects.filter(
         pipeline=pipeline,
         status__in=[PipelineRun.Status.PENDING, PipelineRun.Status.RUNNING],
@@ -32,6 +36,7 @@ def queue_pipeline_execution(pipeline, triggered_by):
 
 
 def _resolve_anchored_trigger_user(source_run, target_pipeline):
+    # Mantém o usuário original sempre que ele tiver permissão para a pipeline ancorada.
     trigger_user = source_run.triggered_by
     if trigger_user and target_pipeline.can_execute(trigger_user):
         return trigger_user

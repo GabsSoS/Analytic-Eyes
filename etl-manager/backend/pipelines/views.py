@@ -16,6 +16,7 @@ from .tasks import queue_pipeline_execution
 from django.db.models import Count
 
 # cria um serializer manual para os detalhes da pipeline, incluindo código main.py e lista de colaboradores
+# Esta função monta a resposta usada nas telas de detalhes e edição de pipeline
 def serialize_pipeline_details(pipeline):
     permissions = PipelinePermission.objects.filter(
         pipeline=pipeline
@@ -56,9 +57,11 @@ def serialize_pipeline_details(pipeline):
     try:
         main_code = storage.get_script(pipeline_name, "main.py")
     except Exception:
+        # Permite pipelines sem main.py para evitar falha na serialização
         main_code = ""
 
     env_exists = storage.env_file_exists(pipeline_name)
+    config_exists = storage.config_file_exists(pipeline_name)
 
     schedule = getattr(pipeline, "schedule", None)
 
@@ -123,6 +126,20 @@ def parse_collaborators_payload(raw_collaborators):
         )
 
     return collaborators
+
+
+def _decode_uploaded_text_file(uploaded_file, expected_extensions, form_field_name):
+    if uploaded_file is None:
+        return None
+
+    filename = uploaded_file.name.lower()
+    if not any(filename.endswith(ext) for ext in expected_extensions):
+        raise ValueError(
+            f"Arquivo '{form_field_name}' deve ser um dos tipos: {', '.join(expected_extensions)}"
+        )
+
+    # Decodifica o conteúdo do arquivo enviado como texto UTF-8
+    return uploaded_file.read().decode('utf-8')
 
 
 def parse_trigger_sources_payload(raw_pipeline_ids, user, current_pipeline=None):
@@ -360,6 +377,7 @@ def pipeline_create(request):
     main_code = request.data.get("main_code", "")
     script_file = request.FILES.get("script")
     env_file = request.FILES.get("env")
+    config_file = request.FILES.get("config")
     trigger_sources = None
     schedule = None
 
@@ -370,10 +388,14 @@ def pipeline_create(request):
         # Lê o arquivo script e decodifica
         main_code = script_file.read().decode('utf-8') if script_file else main_code
         
-        # Lê o arquivo .env e decodifica
+        # Lê os arquivos de configuração e decodifica apenas os formatos aceitos
         env_content = None
+        config_content = None
         if env_file:
-            env_content = env_file.read().decode('utf-8')
+            env_content = _decode_uploaded_text_file(env_file, [".env"], "env")
+
+        if config_file:
+            config_content = _decode_uploaded_text_file(config_file, [".ini"], "config")
         
         trigger_sources = parse_trigger_sources_payload(
             request.data.get("anchor_pipeline_ids"),
@@ -414,6 +436,12 @@ if __name__ == "__main__":
                 {"error": "Arquivo .env maior que 1MB"},
                 status=400
             )
+
+        if config_file and config_file.size > 1_000_000:  # 1MB
+            return Response(
+                {"error": "Arquivo config.ini maior que 1MB"},
+                status=400
+            )
         
         # Cria a pipeline normalmente
         pipeline = Pipeline.create_pipeline(
@@ -424,6 +452,7 @@ if __name__ == "__main__":
             main_code=main_code,
             trigger_sources=trigger_sources,
             env_content=env_content,
+            config_content=config_content,
         )
 
         if schedule is not None:
@@ -466,6 +495,7 @@ def trigger_pipeline(request, pipeline_id):
     if not pipeline.can_execute(request.user):
         return Response({"error": "Sem permissão"}, status=status.HTTP_403_FORBIDDEN)
 
+    # Enfileira a execução para o worker processar em segundo plano
     run = queue_pipeline_execution(pipeline, request.user)
     if run is None:
         return Response(
@@ -475,7 +505,7 @@ def trigger_pipeline(request, pipeline_id):
 
     # Dispara o worker (assíncrono)
 
-    # 202 Accepted porque o processamento é assíncrono
+    # 202 Accepted porque o processamento é agendado e não finalizado na requisição
     return Response(
         {"run_id": run.id, "status": run.status},
         status=status.HTTP_202_ACCEPTED
@@ -587,6 +617,7 @@ def update_pipeline(request, pipeline_id):
         schedule = parse_schedule_payload(request.data.get("schedule"))
         script_file = request.FILES.get("script")
         env_file = request.FILES.get("env")
+        config_file = request.FILES.get("config")
         main_code = request.data.get("main_code")
 
         if script_file is not None:
@@ -595,10 +626,16 @@ def update_pipeline(request, pipeline_id):
             main_code = script_file.read().decode("utf-8")
 
         env_content = None
+        config_content = None
         if env_file is not None:
             if env_file.size > 1_000_000:
                 return Response({"error": "Arquivo .env maior que 1MB"}, status=status.HTTP_400_BAD_REQUEST)
-            env_content = env_file.read().decode("utf-8")
+            env_content = _decode_uploaded_text_file(env_file, [".env"], "env")
+
+        if config_file is not None:
+            if config_file.size > 1_000_000:
+                return Response({"error": "Arquivo config.ini maior que 1MB"}, status=status.HTTP_400_BAD_REQUEST)
+            config_content = _decode_uploaded_text_file(config_file, [".ini"], "config")
 
         next_status = request.data.get("status")
         if next_status is not None:
@@ -615,6 +652,7 @@ def update_pipeline(request, pipeline_id):
             trigger_sources=trigger_sources,
             schedule=schedule,
             env_content=env_content,
+            config_content=config_content,
         )
     except UnicodeDecodeError:
         return Response(
@@ -804,10 +842,10 @@ def pipeline_delete(request, pipeline_id):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# View para gerenciar arquivo .env de uma pipeline (GET ou POST)
+# View para gerenciar arquivo de configuração de uma pipeline (GET ou POST)
 @extend_schema(
     operation_id='manage_pipeline_env',
-    description='GET: Baixa o arquivo .env de uma pipeline. POST: Faz upload de um novo arquivo .env (substitui o existente)',
+    description='GET: Retorna status de configuração. POST: Faz upload de um novo arquivo .env ou config.ini (substitui o existente)',
     parameters=[
         OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline')
     ],
@@ -819,29 +857,32 @@ def pipeline_delete(request, pipeline_id):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def manage_pipeline_env(request, pipeline_id):
-    from django.http import FileResponse
-    
     pipeline = get_object_or_404(Pipeline, id=pipeline_id)
-    
+
     if request.method == "GET":
-        # Download do arquivo .env
         if not pipeline.can_execute(request.user):
             return Response(
                 {"error": "Usuário não tem permissão para acessar esta pipeline"},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
         pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
-        
+        env_exists = storage.env_file_exists(pipeline_name)
+        config_exists = storage.config_file_exists(pipeline_name)
+
         try:
-            env_content = storage.get_env_file(pipeline_name)
+            env_content = storage.get_env_file(pipeline_name) if env_exists else ""
             return Response(
-                {"env_content": env_content, "exists": True},
+                {
+                    "env_content": env_content,
+                    "env_exists": env_exists,
+                    "config_exists": config_exists,
+                },
                 status=status.HTTP_200_OK
             )
         except FileNotFoundError:
             return Response(
-                {"env_content": "", "exists": False},
+                {"env_content": "", "env_exists": False, "config_exists": config_exists},
                 status=status.HTTP_200_OK
             )
         except Exception as e:
@@ -849,39 +890,53 @@ def manage_pipeline_env(request, pipeline_id):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-    
+
     elif request.method == "POST":
-        # Upload de novo arquivo .env
         if not pipeline.can_edit(request.user):
             return Response(
                 {"error": "Usuário não tem permissão para editar esta pipeline"},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
         env_file = request.FILES.get("env")
-        
-        if not env_file:
+        config_file = request.FILES.get("config")
+
+        if not env_file and not config_file:
             return Response(
-                {"error": "Campo 'env' é obrigatório"},
+                {"error": "Campo 'env' ou 'config' é obrigatório"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
-            if env_file.size > 1_000_000:  # 1MB
+            if env_file and env_file.size > 1_000_000:  # 1MB
                 return Response(
                     {"error": "Arquivo .env maior que 1MB"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            env_content = env_file.read().decode("utf-8")
+
+            if config_file and config_file.size > 1_000_000:  # 1MB
+                return Response(
+                    {"error": "Arquivo config.ini maior que 1MB"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
-            storage.save_env_file(pipeline_name, env_content)
-            
+            message_parts = []
+
+            if env_file:
+                env_content = _decode_uploaded_text_file(env_file, [".env"], "env")
+                storage.save_env_file(pipeline_name, env_content)
+                message_parts.append(".env")
+
+            if config_file:
+                config_content = _decode_uploaded_text_file(config_file, [".ini"], "config")
+                storage.save_config_file(pipeline_name, config_content)
+                message_parts.append("config.ini")
+
             return Response(
-                {"message": "Arquivo .env atualizado com sucesso"},
+                {"message": f"Arquivo(s) {' e '.join(message_parts)} atualizado(s) com sucesso"},
                 status=status.HTTP_201_CREATED
             )
-        
         except UnicodeDecodeError:
             return Response(
                 {"error": "Arquivo não é UTF-8 válido"},

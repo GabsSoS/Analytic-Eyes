@@ -28,6 +28,26 @@ class PipelineStorage(ABC):
         """Renomeia a pasta base da pipeline"""
         pass
 
+    @abstractmethod
+    def save_config_file(self, pipeline_name: str, content: str) -> None:
+        """Salva um arquivo de configuração na pipeline"""
+        pass
+
+    @abstractmethod
+    def get_config_file(self, pipeline_name: str) -> str:
+        """Recupera um arquivo de configuração da pipeline"""
+        pass
+
+    @abstractmethod
+    def delete_config_file(self, pipeline_name: str) -> None:
+        """Deleta o arquivo de configuração da pipeline"""
+        pass
+
+    @abstractmethod
+    def config_file_exists(self, pipeline_name: str) -> bool:
+        """Verifica se um arquivo de configuração existe na pipeline"""
+        pass
+
 
 class LocalStorage(PipelineStorage):
     """Armazena scripts no filesystem local"""
@@ -37,7 +57,7 @@ class LocalStorage(PipelineStorage):
     
     def _get_pipeline_dir(self, pipeline_name: str) -> Path:
         """Retorna o diretório da pipeline, validando o nome"""
-        # Segurança: previne directory traversal
+        # Segurança: previne directory traversal e classes de caminho inválidas
         if ".." in pipeline_name or "/" in pipeline_name or "\\" in pipeline_name:
             raise ValueError(f"Nome inválido de pipeline: {pipeline_name}")
         
@@ -50,6 +70,7 @@ class LocalStorage(PipelineStorage):
         
         file_path = pipeline_dir / filename
         file_path.write_text(content)
+        # Cria o diretório quando necessário e grava o arquivo de forma simples
 
     def save_script_main_py(self, pipeline_name: str, filename: str, content: str) -> None:        
         """Salva um script no disco local"""
@@ -124,3 +145,35 @@ class LocalStorage(PipelineStorage):
         pipeline_dir = self._get_pipeline_dir(pipeline_name)
         env_file_path = pipeline_dir / ".env"
         return env_file_path.exists()
+
+    def save_config_file(self, pipeline_name: str, content: str) -> None:
+        """Salva um arquivo config.ini na pipeline"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        pipeline_dir.mkdir(parents=True, exist_ok=True)
+        
+        config_file_path = pipeline_dir / "config.ini"
+        config_file_path.write_text(content)
+
+    def get_config_file(self, pipeline_name: str) -> str:
+        """Recupera um arquivo config.ini da pipeline"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        config_file_path = pipeline_dir / "config.ini"
+        
+        if not config_file_path.exists():
+            raise FileNotFoundError(f"Arquivo config.ini não encontrado em {pipeline_name}")
+        
+        return config_file_path.read_text()
+
+    def delete_config_file(self, pipeline_name: str) -> None:
+        """Deleta o arquivo config.ini da pipeline"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        config_file_path = pipeline_dir / "config.ini"
+        
+        if config_file_path.exists():
+            config_file_path.unlink()
+
+    def config_file_exists(self, pipeline_name: str) -> bool:
+        """Verifica se um arquivo config.ini existe na pipeline"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        config_file_path = pipeline_dir / "config.ini"
+        return config_file_path.exists()

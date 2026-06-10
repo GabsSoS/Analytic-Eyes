@@ -146,6 +146,22 @@ npm run dev
 
 ---
 
+## Variáveis de ambiente de exemplo para ETLs
+
+Os exemplos de pipelines usam variáveis de ambiente de configuração local para decouplar o código do ambiente.
+
+- `API_PIPELINE_URL` — URL da API externa usada pela pipeline de exemplo
+- `DB_CONNECTION` — string de conexão do banco de dados local de exemplo
+
+No exemplo `etl-manager/etls/etl_vendas/config.py`, o padrão agora é:
+
+```python
+API_PIPELINE_URL = os.getenv("API_PIPELINE_URL", "http://api.pipeline.com")
+DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///pipeline.db")
+```
+
+---
+
 ## Desenvolvimento e testes
 
 Executar os testes do backend:

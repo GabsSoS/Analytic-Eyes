@@ -18,6 +18,7 @@ def get_storage():
         raise ValueError(f"Tipo de storage inválido: {storage_type}")
 
 storage = get_storage()
+# Escolhe o backend de armazenamento de scripts com base na configuração do Django
 
 
 SCHEDULE_WEEKDAY_CHOICES = (
@@ -87,12 +88,13 @@ class Pipeline(models.Model):
         main_code,
         trigger_sources=None,
         env_content=None,
+        config_content=None,
     ):
         
         script_code = '''import os
 
-API_VENDAS_URL = os.getenv("API_VENDAS_URL", "http://api.vendas.com")
-DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
+API_PIPELINE_URL = os.getenv("API_PIPELINE_URL", "http://api.pipeline.com")
+DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///pipeline.db")
 '''
         if type(lib) != list:
             raise ValueError("Lib deve ser uma lista de strings")
@@ -112,9 +114,14 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
             # Salva .env se fornecido
             if env_content:
                 storage.save_env_file(pipeline_name, env_content)
+
+            # Salva config.ini se fornecido
+            if config_content:
+                storage.save_config_file(pipeline_name, config_content)
             
         except Exception as e:
             raise Exception(f"Erro ao salvar scripts da pipeline: {str(e)}")
+# A pipeline grava todos os arquivos antes de criar o registro no DB
             
         # Criação do registro no banco de dados
         pipeline = cls.objects.create(
@@ -155,6 +162,7 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
         trigger_sources=None,
         schedule=None,
         env_content=None,
+        config_content=None,
     ):
         if not self.can_edit(acting_user):
             raise PermissionError("Usuario nao tem permissao para editar esta pipe")
@@ -177,6 +185,7 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
 
             next_pipeline_name = self.build_pipeline_name(normalized_name)
             if next_pipeline_name != current_pipeline_name:
+                # Renomeia o diretório da pipeline quando o nome muda
                 storage.rename_pipeline(current_pipeline_name, next_pipeline_name)
                 self.etl_name = f"etls/{next_pipeline_name}"
                 current_pipeline_name = next_pipeline_name
@@ -194,6 +203,9 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///vendas.db")
 
         if env_content is not None:
             storage.save_env_file(current_pipeline_name, env_content)
+
+        if config_content is not None:
+            storage.save_config_file(current_pipeline_name, config_content)
 
         self.save()
 

@@ -3,6 +3,8 @@ import os
 import subprocess
 from pathlib import Path
 
+# Runner local para executar uma ETL diretamente a partir da pasta de exemplos.
+
 def executar_etl(etl_name, run_id):
     """
     Executa uma ETL executando seu main.py diretamente
@@ -23,6 +25,7 @@ def executar_etl(etl_name, run_id):
         if req_file.exists():
             print(f" Instalando dependências de {req_file}")
             try:
+                # Instala dependências específicas da ETL antes de executar
                 subprocess.run([
                     sys.executable,
                     "-m",
@@ -45,6 +48,7 @@ def executar_etl(etl_name, run_id):
             text=True,
             timeout=300  # 5 minutos timeout
         )
+        # Exibe saída e erros capturados do processo de execução
         print(result.stdout)
         if result.stderr:
             print(result.stderr, file=sys.stderr)

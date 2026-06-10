@@ -27,7 +27,7 @@ function Criar() {
   const [ownersList, setOwnersList] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingPipeline, setIsLoadingPipeline] = useState(false);
-  const [envFile, setEnvFile] = useState(null);
+  const [configFile, setConfigFile] = useState(null);
 
   const addCoOwner = () => {
     const trimmedValue = inputValue.trim();
@@ -74,13 +74,13 @@ function Criar() {
     }
   };
 
-  const handleEnvFile = (files) => {
-    const envFiles = Array.from(files || []).filter((file) =>
-      file.name.toLowerCase().endsWith(".env")
+  const handleConfigFile = (files) => {
+    const configFiles = Array.from(files || []).filter((file) =>
+      file.name.toLowerCase().endsWith(".env") || file.name.toLowerCase().endsWith(".ini")
     );
 
-    if (envFiles.length > 0) {
-      setEnvFile(envFiles[0]);
+    if (configFiles.length > 0) {
+      setConfigFile(configFiles[0]);
     }
   };
 
@@ -281,8 +281,9 @@ function Criar() {
         formData.append("lib", JSON.stringify(normalizedLibraries));
       }
 
-      if (envFile) {
-        formData.append("env", envFile);
+      if (configFile) {
+        const fieldName = configFile.name.toLowerCase().endsWith(".ini") ? "config" : "env";
+        formData.append(fieldName, configFile);
       }
 
       const response = isEditMode
@@ -447,31 +448,31 @@ function Criar() {
       <div className="etapa2-env">
         <div className="cabecalho">
           <div className="circulo">2</div>
-          <h3>ARQUIVO DE CONFIGURAÇÃO (.ENV) - OPCIONAL</h3>
+          <h3>ARQUIVO DE CONFIGURAÇÃO (.ENV / config.ini) - OPCIONAL</h3>
         </div>
         <div className="etapa2-env-conteudo">
           <p className="paragaf">
-            Você pode fazer upload de um arquivo <strong>.env</strong> para fornecer variáveis de ambiente à sua pipeline.
+            Você pode fazer upload de um arquivo <strong>.env</strong> ou <strong>config.ini</strong> para fornecer variáveis de ambiente ou configurações à sua pipeline.
           </p>
-          <label htmlFor="env-upload" className="env-upload-box">
+          <label htmlFor="config-upload" className="env-upload-box">
             <input
-              id="env-upload"
+              id="config-upload"
               type="file"
-              accept=".env"
-              onChange={(event) => handleEnvFile(event.target.files)}
+              accept=".env,.ini"
+              onChange={(event) => handleConfigFile(event.target.files)}
               className="env-input"
             />
             <div className="env-upload-label">
-              {envFile ? (
+              {configFile ? (
                 <>
-                  <span className="env-file-name">✓ {envFile.name}</span>
-                  {envFile && (
+                  <span className="env-file-name">✓ {configFile.name}</span>
+                  {configFile && (
                     <button
                       type="button"
                       className="btn-remove-env"
                       onClick={(e) => {
                         e.preventDefault();
-                        setEnvFile(null);
+                        setConfigFile(null);
                       }}
                     >
                       Remover
@@ -479,7 +480,7 @@ function Criar() {
                   )}
                 </>
               ) : (
-                <span>Clique para selecionar arquivo .env</span>
+                <span>Clique para selecionar arquivo .env ou config.ini</span>
               )}
             </div>
           </label>
