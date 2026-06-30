@@ -1,13 +1,16 @@
+import os
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
+
+import docker
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
 from .models import Pipeline, PipelineSchedule
-from .tasks import dispatch_due_schedules
+from .tasks import _resolve_etl_docker_network, dispatch_due_schedules
 
 
 class PipelineAnchorTests(TestCase):
@@ -60,6 +63,32 @@ class PipelineAnchorTests(TestCase):
     def test_set_trigger_sources_rejects_self_reference(self):
         with self.assertRaisesMessage(ValueError, "nela mesma"):
             self.pipeline_a.set_trigger_sources([self.pipeline_a])
+
+
+class DockerNetworkResolutionTests(TestCase):
+    @patch.dict(os.environ, {"ETL_DOCKER_NETWORK": "etl-network"}, clear=False)
+    def test_resolve_etl_docker_network_prefers_configured_network(self):
+        client = Mock()
+        client.networks.get.return_value = object()
+
+        self.assertEqual(_resolve_etl_docker_network(client), "etl-network")
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_resolve_etl_docker_network_uses_current_container_network(self):
+        client = Mock()
+        client.networks.get.side_effect = docker.errors.NotFound("network missing")
+        current_container = Mock()
+        current_container.attrs = {
+            "NetworkSettings": {
+                "Networks": {
+                    "etl-network": {},
+                }
+            }
+        }
+        client.containers.get.return_value = current_container
+
+        with patch.dict(os.environ, {"HOSTNAME": "abc123"}, clear=True):
+            self.assertEqual(_resolve_etl_docker_network(client), "etl-network")
 
 
 class PipelineScheduleTests(TestCase):

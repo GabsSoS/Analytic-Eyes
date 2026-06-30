@@ -14,6 +14,40 @@ logger = logging.getLogger(__name__)
 # e coordena a execução dentro de containers isolados.
 
 
+def _resolve_etl_docker_network(client):
+    """Resolve a rede Docker utilizada pelos containers das ETLs.
+
+    Prioriza a rede configurada por ambiente. Quando ela não existir, tenta
+    descobrir a rede do container atual a partir do próprio worker/container.
+    """
+    configured_network = os.getenv("ETL_DOCKER_NETWORK", "").strip()
+    if configured_network:
+        try:
+            client.networks.get(configured_network)
+            return configured_network
+        except docker.errors.NotFound:
+            logger.warning(
+                "Rede Docker configurada %s não encontrada; tentando descobrir rede do container atual",
+                configured_network,
+            )
+
+    container_id = os.getenv("HOSTNAME", "").strip()
+    if not container_id:
+        return configured_network or "bridge"
+
+    try:
+        current_container = client.containers.get(container_id)
+        networks = current_container.attrs.get("NetworkSettings", {}).get("Networks", {})
+        if networks:
+            network_name = next(iter(networks.keys()))
+            logger.info("Usando rede Docker %s do container atual %s", network_name, container_id)
+            return network_name
+    except Exception as exc:
+        logger.warning("Não foi possível identificar a rede do container atual %s: %s", container_id, exc)
+
+    return configured_network or "bridge"
+
+
 def queue_pipeline_execution(pipeline, triggered_by):
     # Evita disparar uma nova execução se já existe uma pipeline pendente ou em execução
     if PipelineRun.objects.filter(
@@ -174,7 +208,7 @@ def execute_pipeline(self, run_id):
             # evitando rebuild da imagem etls:latest a cada nova pipeline.
             etl_host_path = os.getenv("ETL_HOST_PATH", "").strip()
             current_container = os.getenv("HOSTNAME", "").strip()
-            etl_network = os.getenv("ETL_DOCKER_NETWORK", "etl-manager_default")
+            etl_network = _resolve_etl_docker_network(client)
 
             # Limites de recursos (opcionais via ENV)
             mem_limit = os.getenv("ETL_CONTAINER_MEM_LIMIT", None)
