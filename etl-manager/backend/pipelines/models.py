@@ -617,7 +617,7 @@ class PipelinePermission(models.Model):
 
     def permission_pipe(self, user, permission):
         PipelinePermission.objects.update_or_create(
-            pipeline=self,
+            pipeline=self.pipeline,
             user=user,
             defaults={"permission": permission},
         )
@@ -663,7 +663,7 @@ class PipelineRun(models.Model):
     #views para histórico de execução de uma pipe específica
     @classmethod
     def history(cls, pipeline_id, user):
-        runs = cls.objects.filter(pipeline_id=pipeline_id, triggered_by=user).select_related("triggered_by")
+        runs = cls.objects.filter(pipeline_id=pipeline_id).select_related("triggered_by").order_by('-created_at')
         
         data = [
             {

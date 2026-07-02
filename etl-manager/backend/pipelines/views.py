@@ -2,8 +2,8 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes
-from rest_framework.authentication import BasicAuthentication, TokenAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes, throttle_classes
+from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
@@ -13,7 +13,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 import json
 from .models import Pipeline, PipelinePermission, PipelineRun, PipelineSchedule, storage
 from .tasks import queue_pipeline_execution
-from django.db.models import Count
+from django.db.models import Count, OuterRef, Subquery
+from .throttling import LoginRateThrottle
 
 # cria um serializer manual para os detalhes da pipeline, incluindo código main.py e lista de colaboradores
 # Esta função monta a resposta usada nas telas de detalhes e edição de pipeline
@@ -243,6 +244,7 @@ def parse_schedule_payload(raw_schedule):
 #view para realizar login
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
 def user_login(request):
     if request.method == "POST":
         username = request.data.get("username")
@@ -258,8 +260,8 @@ def user_login(request):
         user = authenticate(username=username, password=password)
         
         if user is not None:
-            # Obtém ou cria um token para o usuário
-            token, created = Token.objects.get_or_create(user=user)
+            Token.objects.filter(user=user).delete()
+            token = Token.objects.create(user=user)
             return Response(
                 {
                     "message": "Login bem-sucedido",
@@ -336,14 +338,23 @@ def change_password(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
     
-    # Atualiza a senha
+    # Atualiza a senha e invalida token atual
     user.set_password(new_password)
     user.save()
-    
+    Token.objects.filter(user=user).delete()
+
     return Response(
-        {"message": "Senha alterada com sucesso"},
+        {"message": "Senha alterada com sucesso. Faça login novamente."},
         status=status.HTTP_200_OK
     )
+
+
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def logout(request):
+    request.auth.delete()
+    return Response({"message": "Logout realizado com sucesso."}, status=status.HTTP_200_OK)
 
 # View para criação de pipeline (POST)
 @extend_schema(
@@ -525,23 +536,35 @@ def pipelines(request):
         pipes = Pipeline.pipeline_list(request.user)
         data = []
         
+        pipes = list(pipes.select_related('owner'))
+        pipeline_ids = [p.id for p in pipes]
+
+        latest_run_id_sq = PipelineRun.objects.filter(
+            pipeline=OuterRef('pk')
+        ).order_by('-created_at').values('id')[:1]
+
+        runs_map = {
+            r['pipeline_id']: r
+            for r in PipelineRun.objects.filter(
+                id__in=Pipeline.objects.filter(id__in=pipeline_ids)
+                .annotate(lr=Subquery(latest_run_id_sq))
+                .values_list('lr', flat=True)
+            ).values('pipeline_id', 'status', 'started_at', 'finished_at')
+        }
+
         for p in pipes:
-            # Buscar última execução
-            last_run = PipelineRun.objects.filter(pipeline=p).order_by('-created_at').first()
-            
             pipeline_data = {
                 "id": p.id,
                 "name": p.name,
                 "owner": p.owner.username
             }
-            
+            last_run = runs_map.get(p.id)
             if last_run:
                 pipeline_data["last_run"] = {
-                    "status": last_run.status,
-                    "started_at": last_run.started_at,
-                    "finished_at": last_run.finished_at
+                    "status": last_run["status"],
+                    "started_at": last_run["started_at"],
+                    "finished_at": last_run["finished_at"]
                 }
-            
             data.append(pipeline_data)
         
         return Response({
@@ -783,15 +806,24 @@ def pipelines_stats(request):
     # Quantas são compartilhadas (visíveis mas não owned)
     shared_count = visible_qs.exclude(owner=user).count()
 
-    # Contagem por status da última execução
-    status_counts = {"PENDING": 0, "RUNNING": 0, "SUCCESS": 0, "FAILED": 0, "NOT_RUN": 0}
-    for p in visible_qs:
-        last_run = PipelineRun.objects.filter(pipeline=p).order_by('-created_at').first()
-        if last_run:
-            st = last_run.status
-        else:
-            st = "NOT_RUN"
+    pipeline_ids = list(visible_qs.values_list('id', flat=True))
 
+    latest_run_id_sq = PipelineRun.objects.filter(
+        pipeline=OuterRef('pk')
+    ).order_by('-created_at').values('id')[:1]
+
+    runs_map = {
+        r['pipeline_id']: r['status']
+        for r in PipelineRun.objects.filter(
+            id__in=Pipeline.objects.filter(id__in=pipeline_ids)
+            .annotate(lr=Subquery(latest_run_id_sq))
+            .values_list('lr', flat=True)
+        ).values('pipeline_id', 'status')
+    }
+
+    status_counts = {"PENDING": 0, "RUNNING": 0, "SUCCESS": 0, "FAILED": 0, "NOT_RUN": 0}
+    for pid in pipeline_ids:
+        st = runs_map.get(pid, "NOT_RUN")
         status_counts[st] = status_counts.get(st, 0) + 1
 
     return Response(
@@ -824,13 +856,7 @@ def pipeline_delete(request, pipeline_id):
     if pipeline.owner != request.user:
         return Response({"error": "Apenas o owner pode deletar esta pipeline"}, status=status.HTTP_403_FORBIDDEN)
 
-    # Confirmação pelo nome
-    confirm_name = None
-    if request.method == "DELETE":
-        # DELETE pode enviar body dependendo do cliente; DRF permite request.data
-        confirm_name = request.data.get("confirm_name")
-    else:
-        confirm_name = request.data.get("confirm_name")
+    confirm_name = request.data.get("confirm_name")
 
     if not confirm_name or str(confirm_name).strip() != pipeline.name:
         return Response({"error": "Confirmação inválida. Informe o nome exato da pipeline no campo 'confirm_name'."}, status=status.HTTP_400_BAD_REQUEST)
@@ -870,26 +896,10 @@ def manage_pipeline_env(request, pipeline_id):
         env_exists = storage.env_file_exists(pipeline_name)
         config_exists = storage.config_file_exists(pipeline_name)
 
-        try:
-            env_content = storage.get_env_file(pipeline_name) if env_exists else ""
-            return Response(
-                {
-                    "env_content": env_content,
-                    "env_exists": env_exists,
-                    "config_exists": config_exists,
-                },
-                status=status.HTTP_200_OK
-            )
-        except FileNotFoundError:
-            return Response(
-                {"env_content": "", "env_exists": False, "config_exists": config_exists},
-                status=status.HTTP_200_OK
-            )
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        return Response(
+            {"env_exists": env_exists, "config_exists": config_exists},
+            status=status.HTTP_200_OK
+        )
 
     elif request.method == "POST":
         if not pipeline.can_edit(request.user):

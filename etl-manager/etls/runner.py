@@ -5,12 +5,28 @@ from pathlib import Path
 
 # Runner local para executar uma ETL diretamente a partir da pasta de exemplos.
 
+def _validar_etl_name(etl_name):
+    for char in ['..', '/', '\\', ':', '*', '?', '"', '<', '>', '|']:
+        if char in etl_name:
+            print(f"Nome inválido de ETL: {etl_name}")
+            return False
+    return True
+
+
 def executar_etl(etl_name, run_id):
     """
     Executa uma ETL executando seu main.py diretamente
     """
-    # Define o caminho da ETL
-    etl_dir = Path(__file__).parent / etl_name
+    if not _validar_etl_name(etl_name):
+        sys.exit(1)
+
+    base_dir = Path(__file__).parent.resolve()
+    etl_dir = (base_dir / etl_name).resolve()
+
+    if not etl_dir.is_relative_to(base_dir):
+        print("Acesso negado: caminho fora da pasta permitida")
+        sys.exit(1)
+
     main_file = etl_dir / "main.py"
     
     if not main_file.exists():

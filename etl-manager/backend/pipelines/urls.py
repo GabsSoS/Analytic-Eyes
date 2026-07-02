@@ -34,5 +34,8 @@ urlpatterns = [
     path("pipelines/<int:pipeline_id>/runs/", views.pipeline_history),
 
     # Listagem de usuários
-    path("users/", views.list_users, name='list_users')
+    path("users/", views.list_users, name='list_users'),
+
+    # Logout
+    path("auth/logout/", views.logout, name='logout'),
 ]
