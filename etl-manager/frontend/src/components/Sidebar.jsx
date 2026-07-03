@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import Menu from "../assets/components/Menu.png";
 import HomeAtiva from "../assets/components/home Ativa.png";
@@ -15,7 +15,14 @@ import "./Sidebar.css";
 function Sidebar() {
   const [isActive, setIsActive] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    navigate("/login");
+  };
 
   const toggleSidebar = () => {
     const newState = !isActive;
@@ -70,12 +77,31 @@ function Sidebar() {
           </li>
           <li className={`container-li ${isCurrentPage("/settings") ? "active-link" : ""}`}>
             <Link to="/settings">
-                <img
+              <img
                 src={isCurrentPage("/settings") ? SettingsAtiva : SettingsDesativado}
                 alt="Configurações"
               />
               <span>Configurações</span>
             </Link>
+          </li>
+          <li className="container-li container-li-logout">
+            <button className="sidebar-logout-btn" onClick={handleLogout} type="button">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="sidebar-logout-icon"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span>Sair</span>
+            </button>
           </li>
         </ul>
       </nav>

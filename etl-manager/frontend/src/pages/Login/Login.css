@@ -16,7 +16,6 @@ html, body {
   overflow: hidden;
 }
 
-/* Corrige comportamento padrão de imagem */
 img {
   display: block;
 }
@@ -29,7 +28,6 @@ img {
   pointer-events: none;
 }
 
-/* posições */
 .onda-esquerda {
   bottom: 0;
   left: 0;
@@ -40,7 +38,6 @@ img {
   right: -7.32vw;
 }
 
-/* imagem */
 .onda-esquerda img {
   width: 80%;
   height: auto;
@@ -56,21 +53,19 @@ img {
   object-fit: cover;
 }
 
-
-
 .foto-walpaper {
   position: absolute;
   top: 52%;
   left: 64%;
   transform: translate(-50%, -50%);
-  width: clamp(47.56vw, 87.56vw, 60.00vw);
+  width: clamp(300px, 45vw, 60vw);
   height: auto;
   z-index: 2;
 }
 
 .campo-login {
   position: absolute;
-  top: 30%;
+  top: 50%;
   left: 20%;
   transform: translate(-50%, -50%);
   display: flex;
@@ -94,22 +89,7 @@ img {
   align-items: center;
 }
 
-.email-input-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 30.50vw;
-  height: auto;
-}
-
-.password-input-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 30.50vw;
-  height: auto;
-}
-
+/* Remove regras duplicadas — apenas esta definição é válida */
 .email-input-container,
 .password-input-container {
   position: relative;
@@ -123,7 +103,8 @@ img {
   position: absolute;
   left: 12px;
   width: 24px;
-  top: -5px;
+  top: 50%;
+  transform: translateY(-50%);
   height: 24px;
   z-index: 2;
 }
@@ -131,15 +112,17 @@ img {
 .password-icon {
   position: absolute;
   left: 12px;
-  top: -5px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 24px;
   height: 24px;
   z-index: 2;
 }
 
-.email, .password {
+.email,
+.password {
   width: 100%;
-  height: 100%;
+  height: 44px;
   padding-left: 50px;
   border: none;
   border-bottom: 2px solid #5388FF;
@@ -149,17 +132,19 @@ img {
   background-color: transparent;
 }
 
-.email::placeholder, .password::placeholder {
+.email::placeholder,
+.password::placeholder {
   color: #ADB5BD;
   font-family: "Inria Sans", sans-serif;
 }
 
-.email:focus, .password:focus {
+.email:focus,
+.password:focus {
   outline: none;
 }
 
 .login-button {
-  width: 292px;
+  width: clamp(260px, 28vw, 420px);
   height: 53px;
   padding: 10px 20px;
   font-size: 1.5rem;
@@ -176,23 +161,6 @@ img {
 
 .login-button:hover {
   background-color: #a0bbff;
-
-}
-
-.email,
-.password {
-  width: 100%;
-  height: 44px;             
-  padding-left: 50px;
-
-  border: none;
-  border-bottom: 2px solid #5388FF;
-
-  font-size: 1rem;
-  font-family: "Inria Sans", sans-serif;
-  color: #5388FF;
-
-  background-color: transparent;
 }
 
 .error-message {
@@ -201,4 +169,50 @@ img {
   font-family: "Inria Sans", sans-serif;
   margin-bottom: 0.5rem;
   text-align: center;
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .foto-walpaper {
+    display: none;
+  }
+
+  .campo-login {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .email-input-container,
+  .password-input-container {
+    width: clamp(260px, 70vw, 420px);
+  }
+
+  .login-button {
+    width: clamp(260px, 70vw, 420px);
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .onda-esquerda,
+  .onda-direita {
+    display: none;
+  }
+
+  .campo-login {
+    width: 100%;
+    padding: 0 24px;
+    box-sizing: border-box;
+  }
+
+  .email-input-container,
+  .password-input-container {
+    width: 100%;
+  }
+
+  .login-button {
+    width: 100%;
+    font-size: 1.2rem;
+  }
 }

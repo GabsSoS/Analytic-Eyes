@@ -1,8 +1,9 @@
 .settings-page {
   width: 100%;
-  height: calc(100vh - 84px);
-  max-height: calc(100vh - 84px);
-  padding: 42px clamp(32px, 4vw, 72px) 32px;
+  height: calc(100vh - 60px);
+  max-height: calc(100vh - 60px);
+  margin-top: 60px;
+  padding: 42px clamp(16px, 4vw, 72px) 32px;
   box-sizing: border-box;
   overflow-y: scroll;
   overflow-x: hidden;
@@ -26,7 +27,7 @@
 
 .settings-shell {
   width: 100%;
-  max-width: min(1480px, calc(100vw - 160px));
+  max-width: min(680px, calc(100vw - 160px));
   margin: 0 auto;
   color: #333333;
   font-family: "irina-sans-regular", sans-serif;
@@ -213,6 +214,20 @@
   color: #1f2937;
 }
 
+.settings-btn.danger {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.settings-btn.danger:hover {
+  background: #dc2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.settings-card-danger {
+  border-color: #fecaca;
+}
+
 .settings-btn.secondary:hover:not(:disabled) {
   background: #d1d5db;
 }
@@ -229,7 +244,7 @@
   }
 
   .settings-shell {
-    max-width: 100%;
+    max-width: calc(100vw - 32px);
   }
 
   .settings-header h1 {
@@ -283,71 +298,20 @@
   }
 }
   
-  .profile-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  .profile-info .label {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-  }
-  
-  .profile-info .value {
-    font-size: 1.1rem;
-    color: #374151;
-  }
-  
-  .settings-form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    max-width: 400px;
-  }
-  
-  .settings-form input {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid #d9dde3;
-    border-radius: 6px;
-    font-size: 0.95rem;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  
-  .settings-form input:focus {
-    border-color: #0066FF;
-  }
-  
-  .settings-btn {
-    padding: 10px 20px;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    width: fit-content;
-    transition: filter 0.2s;
-  }
-  
-  .settings-btn.primary {
-    background-color: #0066FF;
-    color: white;
-  }
-  
-  .settings-btn.secondary {
-    background-color: #f3f4f6;
-    color: #374151;
-    border: 1px solid #d1d5db;
-  }
-  
-  .settings-btn:hover {
-    filter: brightness(0.95);
-  }
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-  .settings-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+.profile-info .label {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.profile-info .value {
+  font-size: 1.1rem;
+  color: #374151;
+}

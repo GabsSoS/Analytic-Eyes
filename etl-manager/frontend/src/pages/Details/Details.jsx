@@ -1370,24 +1370,26 @@ function Details() {
                   )}
                 </div>
 
-                <div className="details-edit-actions">
-                  <button
-                    type="button"
-                    className="details-edit-secondary"
-                    onClick={() => setModalEdicaoAberto(false)}
-                    disabled={salvandoEdicao}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    className="details-edit-primary"
-                    onClick={salvarEdicao}
-                    disabled={salvandoEdicao}
-                  >
-                    {salvandoEdicao ? "Salvando..." : "Salvar alterações"}
-                  </button>
-                </div>
+              </div>
+            </div>
+            <div className="details-modal-footer">
+              <div className="details-edit-actions">
+                <button
+                  type="button"
+                  className="details-edit-secondary"
+                  onClick={() => setModalEdicaoAberto(false)}
+                  disabled={salvandoEdicao}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="details-edit-primary"
+                  onClick={salvarEdicao}
+                  disabled={salvandoEdicao}
+                >
+                  {salvandoEdicao ? "Salvando..." : "Salvar alterações"}
+                </button>
               </div>
             </div>
           </div>
@@ -1450,24 +1452,26 @@ function Details() {
                   </div>
                 )}
 
-                <div className="details-edit-actions">
-                  <button
-                    type="button"
-                    className="details-edit-secondary"
-                    onClick={() => setModalCodigoAberto(false)}
-                    disabled={salvandoCodigo || carregandoCodigo}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    className="details-edit-primary"
-                    onClick={salvarCodigo}
-                    disabled={salvandoCodigo || carregandoCodigo}
-                  >
-                    {salvandoCodigo ? "Salvando..." : "Salvar código"}
-                  </button>
-                </div>
+              </div>
+            </div>
+            <div className="details-modal-footer">
+              <div className="details-edit-actions">
+                <button
+                  type="button"
+                  className="details-edit-secondary"
+                  onClick={() => setModalCodigoAberto(false)}
+                  disabled={salvandoCodigo || carregandoCodigo}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="details-edit-primary"
+                  onClick={salvarCodigo}
+                  disabled={salvandoCodigo || carregandoCodigo}
+                >
+                  {salvandoCodigo ? "Salvando..." : "Salvar código"}
+                </button>
               </div>
             </div>
           </div>
@@ -1530,24 +1534,26 @@ function Details() {
                   </div>
                 </label>
 
-                <div className="details-edit-actions">
-                  <button
-                    type="button"
-                    className="details-edit-secondary"
-                    onClick={() => setModalEnvAberto(false)}
-                    disabled={salvandoEnv}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    className="details-edit-primary"
-                    onClick={enviarArquivoEnv}
-                    disabled={salvandoEnv || !configFile}
-                  >
-                    {salvandoEnv ? "Enviando..." : "Fazer upload"}
-                  </button>
-                </div>
+              </div>
+            </div>
+            <div className="details-modal-footer">
+              <div className="details-edit-actions">
+                <button
+                  type="button"
+                  className="details-edit-secondary"
+                  onClick={() => setModalEnvAberto(false)}
+                  disabled={salvandoEnv}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="details-edit-primary"
+                  onClick={enviarArquivoEnv}
+                  disabled={salvandoEnv || !configFile}
+                >
+                  {salvandoEnv ? "Enviando..." : "Fazer upload"}
+                </button>
               </div>
             </div>
           </div>
@@ -1602,24 +1608,26 @@ function Details() {
                   />
                 </label>
 
-                <div className="details-edit-actions">
-                  <button
-                    type="button"
-                    className="details-edit-secondary"
-                    onClick={() => setModalDeleteAberto(false)}
-                    disabled={deleting}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    className="details-delete-primary"
-                    onClick={deletarPipeline}
-                    disabled={deleting}
-                  >
-                    {deleting ? "Excluindo..." : "Confirmar exclusão"}
-                  </button>
-                </div>
+              </div>
+            </div>
+            <div className="details-modal-footer">
+              <div className="details-edit-actions">
+                <button
+                  type="button"
+                  className="details-edit-secondary"
+                  onClick={() => setModalDeleteAberto(false)}
+                  disabled={deleting}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="details-delete-primary"
+                  onClick={deletarPipeline}
+                  disabled={deleting}
+                >
+                  {deleting ? "Excluindo..." : "Confirmar exclusão"}
+                </button>
               </div>
             </div>
           </div>

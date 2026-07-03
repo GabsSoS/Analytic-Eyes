@@ -377,6 +377,8 @@
   border-radius: 10px;
   box-shadow: 0 22px 50px rgba(15, 23, 42, 0.22);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .details-modal-close {
@@ -389,16 +391,34 @@
 }
 
 .details-modal-body {
-  max-height: calc(78vh - 52px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 12px 18px 18px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: #d0d7e2 transparent;
 }
 
 .details-modal-body::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+}
+
+.details-modal-body::-webkit-scrollbar-thumb {
+  background: #d0d7e2;
+  border-radius: 4px;
+}
+
+.details-modal-footer {
+  flex-shrink: 0;
+  padding: 12px 18px 14px;
+  border-top: 1px solid #dbe0e7;
+  background: #ffffff;
+}
+
+.details-modal-footer .details-edit-actions {
+  margin-top: 0;
+  padding-bottom: 0;
 }
 
 .details-edit-modal {
@@ -686,10 +706,6 @@
   .details-modal {
     max-height: 88vh;
     border-radius: 12px 12px 0 0;
-  }
-
-  .details-modal-body {
-    max-height: calc(88vh - 52px);
   }
 
   .details-edit-collaborator-row {

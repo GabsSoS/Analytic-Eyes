@@ -1,8 +1,10 @@
 import "./Settings.css";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
 function Settings() {
+  const navigate = useNavigate();
   const [usuarioAtual] = useState(localStorage.getItem("username") || "Usuário");
   const [isStaff, setIsStaff] = useState(false);
   const [loadingUserInfo, setLoadingUserInfo] = useState(true);
@@ -25,6 +27,12 @@ function Settings() {
     username: "", 
     password: "" 
   });
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    navigate("/login");
+  };
 
   // Buscar informações do usuário autenticado
   useEffect(() => {
@@ -183,9 +191,9 @@ function Settings() {
               <form className="settings-form" onSubmit={handleCreateUser}>
                 <div className="form-group">
                   <label htmlFor="new-username" className="form-label">Nome de Usuário</label>
-                  <input 
+                  <input
                     id="new-username"
-                    type="text" 
+                    type="text"
                     placeholder="Digite o novo nome de usuário"
                     value={newUserData.username}
                     onChange={(e) => setNewUserData({...newUserData, username: e.target.value})}
@@ -194,9 +202,9 @@ function Settings() {
                 </div>
                 <div className="form-group">
                   <label htmlFor="new-user-password" className="form-label">Senha Inicial</label>
-                  <input 
+                  <input
                     id="new-user-password"
-                    type="password" 
+                    type="password"
                     placeholder="Digite a senha inicial"
                     value={newUserData.password}
                     onChange={(e) => setNewUserData({...newUserData, password: e.target.value})}
@@ -211,6 +219,19 @@ function Settings() {
               </form>
             </div>
           )}
+
+          {/* Sair da conta */}
+          <div className="settings-card settings-card-danger">
+            <h2>Sair da conta</h2>
+            <p className="card-description">Encerra sua sessão atual e retorna para a tela de login.</p>
+            <button
+              type="button"
+              className="settings-btn danger"
+              onClick={handleLogout}
+            >
+              Sair
+            </button>
+          </div>
         </div>
       </div>
     </section>
