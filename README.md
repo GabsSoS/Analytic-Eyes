@@ -18,6 +18,7 @@ O repositório contém o manager (API + frontend), repositório de ETLs e exempl
 - [Stack tecnológica](#stack-tecnologica)
 - [Arquitetura (resumo)](#arquitetura-resumo)
 - [Rotas principais da API](#rotas-principais-da-api)
+- [Interface Web (Frontend)](#interface-web-frontend)
 - [Executando localmente (quickstart)](#executando-localmente-quickstart)
 - [Desenvolvimento e testes](#desenvolvimento-e-testes)
 - [Variáveis de ambiente importantes](#variaveis-de-ambiente-importantes)
@@ -43,11 +44,15 @@ Casos de uso típicos:
 ## Recursos
 
 - Criação, edição, exclusão e execução de pipelines.
-- Upload/edição do código `main.py`, `requirements.txt` e `.env` por pipeline.
+- Upload/edição do código Python (`main.py`) com editor Monaco integrado.
+- Suporte a `requirements.txt` e `.env` por pipeline.
 - Agendamento recorrente (dias/horário) via Celery Beat.
 - Histórico de execuções (runs) com logs vinculados.
 - Controle de acesso por pipeline (view / execute / edit / owner).
 - Execução isolada em container Docker para cada run.
+- Barra de pesquisa funcional no header: busca pipelines por nome via API e navega entre telas da aplicação.
+- Logout disponível tanto na sidebar quanto na tela de Configurações.
+- Interface web totalmente responsiva (desktop, tablet e mobile).
 
 ---
 
@@ -89,6 +94,8 @@ Autenticação
 
 - `POST /api/auth/login/` — login, retorna token
 - `GET /api/auth/me/` — dados do usuário autenticado
+- `POST /api/auth/change-password/` — altera senha do usuário autenticado
+- `POST /api/auth/create-user/` — cria novo usuário (requer permissão de staff)
 
 Pipelines
 
@@ -106,6 +113,26 @@ Infra / suporte
 - `GET /api/health/` — health check
 
 Observação: os paths e payloads completos estão definidos em [etl-manager/backend/config/urls.py](etl-manager/backend/config/urls.py) e nas views relacionadas.
+
+---
+
+## Interface Web (Frontend)
+
+O frontend é uma SPA em React + Vite com as seguintes telas:
+
+| Tela | Rota | Descrição |
+|---|---|---|
+| Login | `/login` | Autenticação com usuário e senha; token armazenado em `localStorage`. |
+| Início | `/home` | Dashboard de boas-vindas com acesso rápido às funcionalidades. |
+| Criar Fluxo | `/criar` | Formulário de criação de pipeline com editor Monaco para código Python, upload de `.py` e suporte a variáveis de ambiente. |
+| Fluxos | `/fluxos` | Listagem de todos os pipelines visíveis ao usuário, com busca e acesso aos detalhes. |
+| Detalhes | `/Details/:id` | Histórico de runs, edição de metadados, código, variáveis de ambiente e opção de exclusão. |
+| Configurações | `/settings` | Perfil do usuário, alteração de senha, criação de novos usuários (admin) e logout. |
+
+Componentes globais:
+
+- **Header** — fixo no topo; inclui barra de pesquisa com busca debounced de pipelines (300 ms) e navegação rápida entre telas via dropdown.
+- **Sidebar** — colapsável; exibe links de navegação com indicador de página ativa e botão de logout no rodapé.
 
 ---
 

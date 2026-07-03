@@ -1,16 +1,63 @@
-# React + Vite
+# Analytic Eyes — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interface web do Analytic Eyes, construída com React 19 + Vite 8.
 
-Currently, two official plugins are available:
+## Tecnologias
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 + React Router DOM 7
+- Vite 8 (build tool / dev server)
+- Axios (cliente HTTP com interceptor de token)
+- Monaco Editor (`@monaco-editor/react`) — edição de código Python
+- CSS puro com variáveis e `clamp()` para responsividade
 
-## React Compiler
+## Estrutura de pastas
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+src/
+├── assets/          # Imagens e ícones
+├── components/      # Header, Sidebar (globais, usados no Layout)
+├── pages/
+│   ├── Login/       # Tela de autenticação
+│   ├── Home/        # Dashboard
+│   ├── Criar/       # Criação de pipeline (Monaco + upload .py)
+│   ├── Fluxos/      # Listagem de pipelines
+│   ├── Details/     # Detalhes, runs, edição e remoção
+│   ├── Settings/    # Perfil, senha, criar usuário, logout
+│   └── Layout/      # Wrapper com Header + Sidebar + <Outlet>
+└── services/
+    └── api.js       # Instância Axios configurada com interceptors
+```
 
-## Expanding the ESLint configuration
+## Autenticação
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+O token é armazenado em `localStorage` como `"token"` e `"username"`.  
+O interceptor em `services/api.js` injeta `Authorization: Token <token>` em toda requisição.  
+Em caso de resposta 401 o interceptor remove o token e redireciona para `/login` automaticamente.
+
+## Variáveis de ambiente
+
+Crie um arquivo `.env` em `etl-manager/frontend/`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api/
+```
+
+Se a variável não for definida, o Axios usa `/api/` como padrão (proxy Vite).
+
+## Rodando localmente
+
+```bash
+cd etl-manager/frontend
+npm install
+npm run dev
+```
+
+O dev server sobe em `http://localhost:5173`.
+
+## Build de produção
+
+```bash
+npm run build
+```
+
+Os artefatos ficam em `dist/` e podem ser servidos por qualquer servidor estático (Nginx, S3+CloudFront, etc.).
