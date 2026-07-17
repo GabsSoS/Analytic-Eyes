@@ -4,7 +4,7 @@ from django.db.models import Q
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.conf import settings
-from .storage import LocalStorage, PipelineStorage
+from .storage import LocalStorage, PipelineStorage, S3Storage
 from zoneinfo import ZoneInfo
 from datetime import timedelta, timezone as dt_timezone
 import time
@@ -14,6 +14,8 @@ def get_storage():
     storage_type = getattr(settings, 'PIPELINE_STORAGE_TYPE', 'local')
     if storage_type == 'local':
         return LocalStorage()
+    elif storage_type == 's3':
+        return S3Storage()
     else:
         raise ValueError(f"Tipo de storage inválido: {storage_type}")
 
