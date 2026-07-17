@@ -11,9 +11,18 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Carrega variáveis de .env - está em etl-manager/.env
+ENV_FILE = BASE_DIR.parent / ".env"
+if ENV_FILE.exists():
+    load_dotenv(ENV_FILE)
+else:
+    # Fallback: tenta carregar do diretório atual (para containerização)
+    load_dotenv()
 
 
 # Quick-start development settings - unsuitable for production
@@ -187,8 +196,8 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # Pipeline Storage Configuration
-# Usar LocalStorage em desenvolvimento, S3Storage em produção
-PIPELINE_STORAGE_TYPE = os.getenv("PIPELINE_STORAGE_TYPE", "local")  # "local" ou "s3"
+# "local" ou "s3" - deve ser configurado via variável de ambiente
+PIPELINE_STORAGE_TYPE = os.getenv("PIPELINE_STORAGE_TYPE")
 
 # Configuração do bucket S3 usada quando PIPELINE_STORAGE_TYPE = "s3"
 AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")

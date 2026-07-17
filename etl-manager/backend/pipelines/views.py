@@ -11,7 +11,7 @@ from rest_framework.authtoken.models import Token
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 import json
-from .models import Pipeline, PipelinePermission, PipelineRun, PipelineSchedule, storage
+from .models import Pipeline, PipelinePermission, PipelineRun, PipelineSchedule, get_storage
 from .tasks import queue_pipeline_execution
 from django.db.models import Count, OuterRef, Subquery
 from .throttling import LoginRateThrottle
@@ -56,13 +56,13 @@ def serialize_pipeline_details(pipeline):
 
     pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
     try:
-        main_code = storage.get_script(pipeline_name, "main.py")
+        main_code = get_storage().get_script(pipeline_name, "main.py")
     except Exception:
         # Permite pipelines sem main.py para evitar falha na serialização
         main_code = ""
 
-    env_exists = storage.env_file_exists(pipeline_name)
-    config_exists = storage.config_file_exists(pipeline_name)
+    env_exists = get_storage().env_file_exists(pipeline_name)
+    config_exists = get_storage().config_file_exists(pipeline_name)
 
     schedule = getattr(pipeline, "schedule", None)
 
@@ -893,8 +893,8 @@ def manage_pipeline_env(request, pipeline_id):
             )
 
         pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
-        env_exists = storage.env_file_exists(pipeline_name)
-        config_exists = storage.config_file_exists(pipeline_name)
+        env_exists = get_storage().env_file_exists(pipeline_name)
+        config_exists = get_storage().config_file_exists(pipeline_name)
 
         return Response(
             {"env_exists": env_exists, "config_exists": config_exists},
@@ -935,12 +935,12 @@ def manage_pipeline_env(request, pipeline_id):
 
             if env_file:
                 env_content = _decode_uploaded_text_file(env_file, [".env"], "env")
-                storage.save_env_file(pipeline_name, env_content)
+                get_storage().save_env_file(pipeline_name, env_content)
                 message_parts.append(".env")
 
             if config_file:
                 config_content = _decode_uploaded_text_file(config_file, [".ini"], "config")
-                storage.save_config_file(pipeline_name, config_content)
+                get_storage().save_config_file(pipeline_name, config_content)
                 message_parts.append("config.ini")
 
             return Response(

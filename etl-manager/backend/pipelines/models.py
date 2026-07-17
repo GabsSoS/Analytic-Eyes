@@ -11,15 +11,21 @@ import time
 
 # Inicializa o storage baseado na configuração
 def get_storage():
-    storage_type = getattr(settings, 'PIPELINE_STORAGE_TYPE', 'local')
+    storage_type = getattr(settings, 'PIPELINE_STORAGE_TYPE', None)
+    
+    if not storage_type or storage_type.strip() == '':
+        raise ValueError(
+            "PIPELINE_STORAGE_TYPE não configurado. "
+            "Configure a variável de ambiente PIPELINE_STORAGE_TYPE com 'local' ou 's3'"
+        )
+    
     if storage_type == 'local':
         return LocalStorage()
     elif storage_type == 's3':
         return S3Storage()
     else:
-        raise ValueError(f"Tipo de storage inválido: {storage_type}")
+        raise ValueError(f"Tipo de storage inválido: {storage_type}. Use 'local' ou 's3'")
 
-storage = get_storage()
 # Escolhe o backend de armazenamento de scripts com base na configuração do Django
 
 
@@ -72,7 +78,7 @@ class Pipeline(models.Model):
         """Delete a pipeline e seus scripts"""
         pipeline_name = self.normalize_pipeline_storage_name(self.etl_name)
         try:
-            storage.delete_pipeline(pipeline_name)
+            get_storage().delete_pipeline(pipeline_name)
         except Exception as e:
             # Log do erro mas não impede a deleção do registro
             print(f"Erro ao deletar scripts da pipeline {pipeline_name}: {str(e)}")
@@ -105,21 +111,21 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///pipeline.db")
         
         try:
             # Salva main.py usando o storage
-            storage.save_script(pipeline_name, "main.py", main_code)
+            get_storage().save_script(pipeline_name, "main.py", main_code)
             # Salva config.py usando o storage
-            storage.save_script(pipeline_name, "config.py", script_code)
+            get_storage().save_script(pipeline_name, "config.py", script_code)
             
             # Salva requirements.txt usando o storage
             requirements_content = "\n".join(lib)
-            storage.save_script(pipeline_name, "requirements.txt", requirements_content)
+            get_storage().save_script(pipeline_name, "requirements.txt", requirements_content)
             
             # Salva .env se fornecido
             if env_content:
-                storage.save_env_file(pipeline_name, env_content)
+                get_storage().save_env_file(pipeline_name, env_content)
 
             # Salva config.ini se fornecido
             if config_content:
-                storage.save_config_file(pipeline_name, config_content)
+                get_storage().save_config_file(pipeline_name, config_content)
             
         except Exception as e:
             raise Exception(f"Erro ao salvar scripts da pipeline: {str(e)}")
@@ -188,7 +194,7 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///pipeline.db")
             next_pipeline_name = self.build_pipeline_name(normalized_name)
             if next_pipeline_name != current_pipeline_name:
                 # Renomeia o diretório da pipeline quando o nome muda
-                storage.rename_pipeline(current_pipeline_name, next_pipeline_name)
+                get_storage().rename_pipeline(current_pipeline_name, next_pipeline_name)
                 self.etl_name = f"etls/{next_pipeline_name}"
                 current_pipeline_name = next_pipeline_name
 
@@ -201,13 +207,13 @@ DB_CONNECTION = os.getenv("DB_CONNECTION", "sqlite:///pipeline.db")
             self.owner = owner
 
         if main_code is not None:
-            storage.save_script(current_pipeline_name, "main.py", main_code)
+            get_storage().save_script(current_pipeline_name, "main.py", main_code)
 
         if env_content is not None:
-            storage.save_env_file(current_pipeline_name, env_content)
+            get_storage().save_env_file(current_pipeline_name, env_content)
 
         if config_content is not None:
-            storage.save_config_file(current_pipeline_name, config_content)
+            get_storage().save_config_file(current_pipeline_name, config_content)
 
         self.save()
 
