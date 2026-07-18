@@ -56,7 +56,7 @@ services:
     environment:
       - DEBUG=True
       - ETL_HOST_PATH=${ETL_HOST_PATH}
-      - ETL_DOCKER_NETWORK=etl-manager_default
+      - ETL_DOCKER_NETWORK=etl-network
       - PIPELINE_STORAGE_TYPE=${PIPELINE_STORAGE_TYPE}
       - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
@@ -79,7 +79,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - ETL_HOST_PATH=${ETL_HOST_PATH}
-      - ETL_DOCKER_NETWORK=etl-manager_default
+      - ETL_DOCKER_NETWORK=etl-network
       - CELERY_WORKER_CONCURRENCY=30
       - ETL_CONTAINER_MEM_LIMIT=512m
       - ETL_CONTAINER_CPUSET=
@@ -104,7 +104,7 @@ services:
       - ./etls:/etls
     environment:
       - ETL_HOST_PATH=${ETL_HOST_PATH}
-      - ETL_DOCKER_NETWORK=etl-manager_default
+      - ETL_DOCKER_NETWORK=etl-network
       - PIPELINE_STORAGE_TYPE=${PIPELINE_STORAGE_TYPE}
       - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}

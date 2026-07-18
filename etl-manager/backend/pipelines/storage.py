@@ -58,6 +58,18 @@ class PipelineStorage(ABC):
         """Verifica se um arquivo de configuração existe na pipeline"""
         pass
 
+    @abstractmethod
+    def sync_to_local(self, pipeline_name: str, local_dir: Path) -> None:
+        """Garante que os arquivos da pipeline existam em local_dir no disco local
+        (usado antes de executar a ETL em um container, que só lê do disco)"""
+        pass
+
+    @abstractmethod
+    def cleanup_local(self, pipeline_name: str, local_dir: Path) -> None:
+        """Remove local_dir se ele for apenas uma cópia temporária criada por
+        sync_to_local (não deve remover nada quando local_dir É a storage real)"""
+        pass
+
 
 class LocalStorage(PipelineStorage):
     """Armazena scripts no filesystem local"""
@@ -186,6 +198,14 @@ class LocalStorage(PipelineStorage):
         pipeline_dir = self._get_pipeline_dir(pipeline_name)
         config_file_path = pipeline_dir / "config.ini"
         return config_file_path.exists()
+
+    def sync_to_local(self, pipeline_name: str, local_dir: Path) -> None:
+        """Os arquivos já residem no disco local; nada a fazer"""
+        pass
+
+    def cleanup_local(self, pipeline_name: str, local_dir: Path) -> None:
+        """local_dir É a storage real (não uma cópia); nunca remover"""
+        pass
 
 
 class S3Storage(PipelineStorage):
@@ -350,3 +370,37 @@ class S3Storage(PipelineStorage):
     def config_file_exists(self, pipeline_name: str) -> bool:
         """Verifica se um arquivo config.ini existe no bucket S3"""
         return self._object_exists(self._get_key(pipeline_name, "config.ini"))
+
+    def sync_to_local(self, pipeline_name: str, local_dir: Path) -> None:
+        """Baixa todos os arquivos da pipeline do S3 para local_dir no disco
+        (o container que executa a ETL só lê do disco local, não do S3)"""
+        prefix = self._pipeline_prefix(pipeline_name)
+        keys = self._list_pipeline_keys(pipeline_name)
+        if not keys:
+            raise FileNotFoundError(
+                f"Nenhum arquivo encontrado no S3 para a pipeline {pipeline_name} (prefixo {prefix})"
+            )
+
+        local_dir = local_dir.resolve()
+        local_dir.mkdir(parents=True, exist_ok=True)
+
+        for key in keys:
+            relative_path = key[len(prefix):]
+            if not relative_path:
+                continue
+
+            target_path = (local_dir / relative_path).resolve()
+            if not target_path.is_relative_to(local_dir):
+                raise ValueError(f"Caminho inválido vindo do S3: {key}")
+
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            response = self.client.get_object(Bucket=self.bucket, Key=key)
+            target_path.write_bytes(response["Body"].read())
+
+    def cleanup_local(self, pipeline_name: str, local_dir: Path) -> None:
+        """Remove a cópia local temporária baixada do S3 por sync_to_local"""
+        import shutil
+
+        _validate_pipeline_name(pipeline_name)
+        if local_dir.exists():
+            shutil.rmtree(local_dir)
