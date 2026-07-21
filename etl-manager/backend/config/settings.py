@@ -9,10 +9,20 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Carrega variáveis de .env - está em etl-manager/.env
+ENV_FILE = BASE_DIR.parent / ".env"
+if ENV_FILE.exists():
+    load_dotenv(ENV_FILE)
+else:
+    # Fallback: tenta carregar do diretório atual (para containerização)
+    load_dotenv()
 
 
 # Quick-start development settings - unsuitable for production
@@ -186,5 +196,18 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # Pipeline Storage Configuration
-# Usar LocalStorage em desenvolvimento, S3Storage em produção
-PIPELINE_STORAGE_TYPE = "local"  # "local" ou "s3"
+# "local" ou "s3" - deve ser configurado via variável de ambiente
+PIPELINE_STORAGE_TYPE = os.getenv("PIPELINE_STORAGE_TYPE")
+
+# Configuração do bucket S3 usada quando PIPELINE_STORAGE_TYPE = "s3"
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")
+# Aceita tanto AWS_S3_REGION_NAME quanto a variável padrão AWS_DEFAULT_REGION
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME") or os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+# Necessário apenas ao usar credenciais temporárias (STS)
+AWS_SESSION_TOKEN = os.getenv("AWS_SESSION_TOKEN", "")
+# Opcional: endpoint customizado (ex.: LocalStack/MinIO para testes locais)
+AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "") or None
+# Prefixo dos objetos dentro do bucket (equivalente à pasta /etls local)
+PIPELINE_S3_PREFIX = os.getenv("PIPELINE_S3_PREFIX", "etls")

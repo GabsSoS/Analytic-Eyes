@@ -2,11 +2,12 @@ import docker
 import logging
 import os
 import redis
+from pathlib import Path
 from celery import shared_task
 from django.db import transaction
 from django.utils import timezone
 from django.conf import settings
-from .models import Pipeline, PipelineRun, PipelineSchedule
+from .models import Pipeline, PipelineRun, PipelineSchedule, get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -201,64 +202,78 @@ def execute_pipeline(self, run_id):
             run.started_at = timezone.now()
             run.save()
 
-            # Conecta ao Docker
-            client = docker.from_env()
+            # Garante que os arquivos da pipeline estejam no disco local antes de
+            # subir o container: o runner só lê de /etls, nunca do S3 diretamente.
+            # A cópia local é só um cache temporário quando a storage é S3 (ver
+            # S3Storage.sync_to_local/cleanup_local) — por isso é sempre removida
+            # no finally abaixo, senão o disco acumula uma pasta por pipeline já
+            # executada.
+            local_etl_dir = Path(settings.BASE_DIR).parent / "etls" / etl_name
+            storage = get_storage()
 
-            # Reaproveita o mesmo volume /etls montado no worker sempre que possivel,
-            # evitando rebuild da imagem etls:latest a cada nova pipeline.
-            etl_host_path = os.getenv("ETL_HOST_PATH", "").strip()
-            current_container = os.getenv("HOSTNAME", "").strip()
-            etl_network = _resolve_etl_docker_network(client)
-
-            # Limites de recursos (opcionais via ENV)
-            mem_limit = os.getenv("ETL_CONTAINER_MEM_LIMIT", None)
-            cpuset_cpus = os.getenv("ETL_CONTAINER_CPUSET", None)
-
-            run_kwargs = {
-                "image": "etls:latest",
-                "command": [etl_name, str(run_id)],
-                "environment": {
-                    "RUN_ID": str(run_id),
-                    "DB_HOST": "postgres",
-                    "REDIS_URL": redis_url,
-                },
-                "network": etl_network,
-                "remove": True,
-            }
-
-            if etl_host_path:
-                run_kwargs["volumes"] = {
-                    etl_host_path: {"bind": "/etls", "mode": "rw"}
-                }
-            elif current_container:
-                run_kwargs["volumes_from"] = [current_container]
-
-            if mem_limit:
-                run_kwargs["mem_limit"] = mem_limit
-            if cpuset_cpus:
-                run_kwargs["cpuset_cpus"] = cpuset_cpus
-
-            # Executa container e coleta logs (bloco principal da execução)
             try:
-                logs = client.containers.run(**run_kwargs)
-                logs_text = logs.decode("utf-8") if isinstance(logs, bytes) else str(logs)
+                storage.sync_to_local(etl_name, local_etl_dir)
 
-                run.log = logs_text
-                run.status = "SUCCESS"
-                run.finished_at = timezone.now()
-                run.save()
+                # Conecta ao Docker
+                client = docker.from_env()
 
-                trigger_anchored_pipelines(run)
+                # Reaproveita o mesmo volume /etls montado no worker sempre que possivel,
+                # evitando rebuild da imagem etls:latest a cada nova pipeline.
+                etl_host_path = os.getenv("ETL_HOST_PATH", "").strip()
+                current_container = os.getenv("HOSTNAME", "").strip()
+                etl_network = _resolve_etl_docker_network(client)
 
-                logger.info(f"Pipeline {run_id} executada com sucesso")
+                # Limites de recursos (opcionais via ENV)
+                mem_limit = os.getenv("ETL_CONTAINER_MEM_LIMIT", None)
+                cpuset_cpus = os.getenv("ETL_CONTAINER_CPUSET", None)
 
-            except docker.errors.ContainerError as e:
-                run.log = e.stderr.decode("utf-8") if e.stderr else str(e)
-                run.status = "FAILED"
-                run.finished_at = timezone.now()
-                run.save()
-                logger.error(f"Pipeline {run_id} falhou: {str(e)}")
-                raise
+                run_kwargs = {
+                    "image": "etls:latest",
+                    "command": [etl_name, str(run_id)],
+                    "environment": {
+                        "RUN_ID": str(run_id),
+                        "DB_HOST": "postgres",
+                        "REDIS_URL": redis_url,
+                    },
+                    "network": etl_network,
+                    "remove": True,
+                }
+
+                if etl_host_path:
+                    run_kwargs["volumes"] = {
+                        etl_host_path: {"bind": "/etls", "mode": "rw"}
+                    }
+                elif current_container:
+                    run_kwargs["volumes_from"] = [current_container]
+
+                if mem_limit:
+                    run_kwargs["mem_limit"] = mem_limit
+                if cpuset_cpus:
+                    run_kwargs["cpuset_cpus"] = cpuset_cpus
+
+                # Executa container e coleta logs (bloco principal da execução)
+                try:
+                    logs = client.containers.run(**run_kwargs)
+                    logs_text = logs.decode("utf-8") if isinstance(logs, bytes) else str(logs)
+
+                    run.log = logs_text
+                    run.status = "SUCCESS"
+                    run.finished_at = timezone.now()
+                    run.save()
+
+                    trigger_anchored_pipelines(run)
+
+                    logger.info(f"Pipeline {run_id} executada com sucesso")
+
+                except docker.errors.ContainerError as e:
+                    run.log = e.stderr.decode("utf-8") if e.stderr else str(e)
+                    run.status = "FAILED"
+                    run.finished_at = timezone.now()
+                    run.save()
+                    logger.error(f"Pipeline {run_id} falhou: {str(e)}")
+                    raise
+            finally:
+                storage.cleanup_local(etl_name, local_etl_dir)
 
         finally:
             try:
