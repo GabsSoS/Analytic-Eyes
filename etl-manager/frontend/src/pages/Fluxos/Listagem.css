@@ -1,68 +1,104 @@
 .fluxos-page {
   width: 100%;
-  min-height: calc(100vh - 84px);
-  padding: 42px clamp(32px, 4vw, 72px) 32px;
+  min-height: 100vh;
+  padding: 32px clamp(20px, 3vw, 40px) 48px;
   box-sizing: border-box;
-  margin-top: 64px;
 }
 
 .fluxos-shell {
   width: 100%;
-  max-width: min(1480px, calc(100vw - 160px));
+  max-width: 1240px;
   margin: 0 auto;
-  color: #333333;
-  font-family: "irina-sans-regular", sans-serif;
+  color: var(--text);
+}
+
+.fluxos-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .fluxos-header h1 {
-  margin: 0 0 18px;
-  font-family: "irina-sans-regular", sans-serif;
-  font-size: clamp(2rem, 1.7rem + 0.8vw, 2.6rem);
-  font-weight: 400;
-  color: #333333;
+  margin: 0 0 4px;
+  font-size: clamp(1.6rem, 1.4rem + 0.6vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.fluxos-subtitle {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.fluxos-new-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.fluxos-new-button:hover {
+  background: var(--primary-hover);
+}
+
+.fluxos-new-button svg {
+  width: 17px;
+  height: 17px;
 }
 
 .fluxos-tabs {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 26px;
-  border-bottom: 1px solid #e3e6eb;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 4px;
+  width: fit-content;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
 }
 
 .fluxos-tab {
   position: relative;
   border: none;
   background: transparent;
-  padding: 0 12px 14px;
-  color: #565d68;
-  font-family: "irina-sans-regular", sans-serif;
-  font-size: clamp(0.95rem, 0.88rem + 0.22vw, 1.08rem);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 600;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .fluxos-tab:hover {
-  color: #1f2937;
+  color: var(--text);
 }
 
 .fluxos-tab.ativa {
-  color: #1f2937;
-}
-
-.fluxos-tab.ativa::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 3px;
-  border-radius: 999px;
-  background: #2f7cf6;
+  color: var(--primary);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
 }
 
 .fluxos-table-wrapper {
-  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
 .fluxos-table {
@@ -72,104 +108,165 @@
 }
 
 .fluxos-table thead th {
-  padding: 0 clamp(18px, 1.8vw, 30px) 14px;
+  padding: 14px clamp(16px, 1.6vw, 26px);
   text-align: left;
-  font-size: clamp(1.05rem, 0.96rem + 0.28vw, 1.18rem);
-  font-weight: 400;
-  color: #2c2f36;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-subtle);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
 }
 
 .fluxos-table tbody tr {
-  border-top: 1px solid #d9dde3;
+  border-top: 1px solid var(--border);
+}
+
+.fluxos-table tbody tr:first-child {
+  border-top: none;
 }
 
 .fluxos-row-clickable {
   cursor: pointer;
-  transition: background-color 0.18s ease;
+  transition: background-color 0.15s ease;
 }
 
 .fluxos-row-clickable:hover {
-  background-color: #f7faff;
+  background-color: var(--surface-hover);
 }
 
 .fluxos-row-clickable:focus-visible {
-  outline: 2px solid #2f7cf6;
+  outline: 2px solid var(--primary);
   outline-offset: -2px;
-  background-color: #eef5ff;
-}
-
-.fluxos-table tbody tr:last-child {
-  border-bottom: 1px solid #d9dde3;
+  background-color: var(--primary-soft);
 }
 
 .fluxos-table tbody td {
-  padding: 14px clamp(18px, 1.8vw, 30px);
-  font-size: clamp(0.95rem, 0.9rem + 0.18vw, 1.04rem);
-  color: #4b5563;
+  padding: 14px clamp(16px, 1.6vw, 26px);
+  font-size: 14px;
+  color: var(--text);
   vertical-align: middle;
 }
 
 .fluxos-table th:nth-child(1),
 .fluxos-table td:nth-child(1) {
-  width: 46%;
+  width: 42%;
 }
 
 .fluxos-table th:nth-child(2),
 .fluxos-table td:nth-child(2) {
-  width: 30%;
+  width: 26%;
+  color: var(--text-muted);
 }
 
 .fluxos-table th:nth-child(3),
 .fluxos-table td:nth-child(3) {
-  width: 24%;
+  width: 26%;
+}
+
+.fluxos-table th:nth-child(4),
+.fluxos-table td:nth-child(4) {
+  width: 36px;
+}
+
+.fluxos-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.fluxos-name-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.fluxos-name-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.fluxos-owner-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.fluxos-owner-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.fluxos-chevron-cell {
+  color: var(--text-subtle);
+}
+
+.fluxos-chevron-cell svg {
+  width: 16px;
+  height: 16px;
 }
 
 .fluxos-empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 160px;
-  color: #6b7280;
-  font-size: 0.98rem;
+  gap: 10px;
+  min-height: 220px;
+  color: var(--text-subtle);
+  font-size: 14px;
 }
 
-@media (min-width: 1440px) {
-  .fluxos-page {
-    padding-top: 54px;
-  }
-
-  .fluxos-tabs {
-    margin-bottom: 32px;
-  }
-
-  .fluxos-table tbody td {
-    padding-top: 16px;
-    padding-bottom: 16px;
-  }
+.fluxos-empty-state svg {
+  width: 34px;
+  height: 34px;
+  opacity: 0.6;
 }
 
-@media (min-width: 1800px) {
-  .fluxos-shell {
-    max-width: min(1640px, calc(100vw - 220px));
-  }
+.fluxos-empty-state p {
+  margin: 0;
 }
 
 @media (max-width: 768px) {
   .fluxos-page {
-    padding: 28px 16px 24px;
+    padding: 20px 16px 32px;
   }
 
-  .fluxos-shell {
-    max-width: 100%;
+  .fluxos-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fluxos-new-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .fluxos-tabs {
-    gap: 0;
-    overflow-x: auto;
+    width: 100%;
   }
 
   .fluxos-tab {
-    white-space: nowrap;
+    flex: 1;
+    text-align: center;
   }
 
   .fluxos-table thead {
@@ -181,22 +278,28 @@
   .fluxos-table tr,
   .fluxos-table td {
     display: block;
-    width: 100%;
+    width: 100% !important;
   }
 
   .fluxos-table tbody tr {
-    padding: 10px 0;
+    padding: 12px 16px;
+  }
+
+  .fluxos-chevron-cell {
+    display: none;
   }
 
   .fluxos-table tbody td {
-    padding: 7px 0;
+    padding: 5px 0;
   }
 
   .fluxos-table tbody td::before {
     content: attr(data-label);
     display: block;
     margin-bottom: 4px;
-    font-size: 0.86rem;
-    color: #6b7280;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-subtle);
   }
 }

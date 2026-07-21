@@ -212,6 +212,15 @@ def execute_pipeline(self, run_id):
             storage = get_storage()
 
             try:
+                # Limpa a saida de uma execucao anterior antes de sincronizar:
+                # sem isso, um output.* antigo (S3) seria baixado de novo pelo
+                # sync_to_local e pareceria resultado desta execucao mesmo que
+                # o script nao grave nada desta vez.
+                try:
+                    storage.delete_output_file(etl_name)
+                except Exception:
+                    logger.exception(f"Erro limpando saida anterior de {etl_name}")
+
                 storage.sync_to_local(etl_name, local_etl_dir)
 
                 # Conecta ao Docker
@@ -255,6 +264,14 @@ def execute_pipeline(self, run_id):
                 try:
                     logs = client.containers.run(**run_kwargs)
                     logs_text = logs.decode("utf-8") if isinstance(logs, bytes) else str(logs)
+
+                    # Se o script gravou um output.* no proprio diretorio de
+                    # trabalho, persiste esse arquivo antes que cleanup_local
+                    # (abaixo) apague a copia local temporaria.
+                    try:
+                        storage.sync_output_from_local(etl_name, local_etl_dir)
+                    except Exception:
+                        logger.exception(f"Erro sincronizando arquivo de saida de {etl_name}")
 
                     run.log = logs_text
                     run.status = "SUCCESS"

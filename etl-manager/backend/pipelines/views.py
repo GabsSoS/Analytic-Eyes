@@ -8,9 +8,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 import json
+import mimetypes
 from .models import Pipeline, PipelinePermission, PipelineRun, PipelineSchedule, get_storage
 from .tasks import queue_pipeline_execution
 from django.db.models import Count, OuterRef, Subquery
@@ -63,6 +64,8 @@ def serialize_pipeline_details(pipeline):
 
     env_exists = get_storage().env_file_exists(pipeline_name)
     config_exists = get_storage().config_file_exists(pipeline_name)
+    input_file_name = get_storage().get_input_file_name(pipeline_name)
+    output_file_name = get_storage().get_output_file_name(pipeline_name)
 
     schedule = getattr(pipeline, "schedule", None)
 
@@ -79,6 +82,10 @@ def serialize_pipeline_details(pipeline):
         "trigger_targets": trigger_targets,
         "main_code": main_code,
         "env_exists": env_exists,
+        "input_file_name": input_file_name,
+        "input_file_exists": input_file_name is not None,
+        "output_file_name": output_file_name,
+        "output_file_exists": output_file_name is not None,
         "schedule": schedule.to_dict() if schedule else {
             "enabled": False,
             "days_of_week": [],
@@ -141,6 +148,26 @@ def _decode_uploaded_text_file(uploaded_file, expected_extensions, form_field_na
 
     # Decodifica o conteúdo do arquivo enviado como texto UTF-8
     return uploaded_file.read().decode('utf-8')
+
+
+# Extensoes aceitas para o arquivo de dados processado pelo script
+INPUT_FILE_ALLOWED_EXTENSIONS = [".xlsx", ".xls", ".csv", ".json"]
+INPUT_FILE_MAX_SIZE = 20_000_000  # 20MB
+
+
+def _read_uploaded_binary_file(uploaded_file, expected_extensions, form_field_name):
+    """Valida a extensao e le o conteudo binario de um arquivo enviado, sem
+    tentar decodificar como texto (planilhas .xlsx/.xls sao arquivos binarios)"""
+    if uploaded_file is None:
+        return None
+
+    filename = uploaded_file.name.lower()
+    if not any(filename.endswith(ext) for ext in expected_extensions):
+        raise ValueError(
+            f"Arquivo '{form_field_name}' deve ser um dos tipos: {', '.join(expected_extensions)}"
+        )
+
+    return uploaded_file.read()
 
 
 def parse_trigger_sources_payload(raw_pipeline_ids, user, current_pipeline=None):
@@ -957,3 +984,145 @@ def manage_pipeline_env(request, pipeline_id):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+# View para gerenciar o arquivo de dados (planilha ou JSON) que o script da pipeline
+# processa (GET, POST ou DELETE). Usa permissao de execucao (nao de edicao): subir os
+# dados a serem processados faz parte de "rodar" a pipeline, entao qualquer colaborador
+# que possa executar tambem pode trocar o arquivo de entrada.
+@extend_schema(
+    operation_id='manage_pipeline_input_file',
+    description='GET: retorna o nome do arquivo de dados atual. POST: faz upload de um arquivo (.xlsx/.xls/.csv/.json) que o script vai processar, substituindo o anterior. DELETE: remove o arquivo de dados atual.',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline')
+    ],
+    request=OpenApiTypes.OBJECT,
+    responses={200: OpenApiTypes.OBJECT, 201: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["GET", "POST", "DELETE"])
+@parser_classes([MultiPartParser, FormParser])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def manage_pipeline_input_file(request, pipeline_id):
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
+
+    if not pipeline.can_execute(request.user):
+        return Response(
+            {"error": "Usuário não tem permissão para acessar esta pipeline"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
+
+    if request.method == "GET":
+        input_file_name = get_storage().get_input_file_name(pipeline_name)
+        return Response(
+            {"input_file_name": input_file_name, "input_file_exists": input_file_name is not None},
+            status=status.HTTP_200_OK
+        )
+
+    if request.method == "DELETE":
+        get_storage().delete_input_file(pipeline_name)
+        return Response(
+            {"message": "Arquivo de dados removido com sucesso"},
+            status=status.HTTP_200_OK
+        )
+
+    # POST
+    input_file = request.FILES.get("input_file")
+
+    if not input_file:
+        return Response(
+            {"error": "Campo 'input_file' é obrigatório"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if input_file.size > INPUT_FILE_MAX_SIZE:
+        return Response(
+            {"error": "Arquivo de dados maior que 20MB"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        content = _read_uploaded_binary_file(input_file, INPUT_FILE_ALLOWED_EXTENSIONS, "input_file")
+        saved_name = get_storage().save_input_file(pipeline_name, input_file.name, content)
+
+        return Response(
+            {"message": f"Arquivo {saved_name} enviado com sucesso", "input_file_name": saved_name},
+            status=status.HTTP_201_CREATED
+        )
+    except ValueError as error:
+        return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# View para baixar o arquivo de saida gerado pela ultima execucao bem-sucedida da
+# pipeline (o script grava esse arquivo no seu proprio diretorio de trabalho; ver
+# storage.sync_output_from_local e tasks.execute_pipeline)
+@extend_schema(
+    operation_id='download_pipeline_output_file',
+    description='Baixa o arquivo de saida gerado pela ultima execucao bem-sucedida da pipeline',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline')
+    ],
+    responses={200: OpenApiTypes.BINARY, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def download_pipeline_output_file(request, pipeline_id):
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
+
+    if not pipeline.can_execute(request.user):
+        return Response(
+            {"error": "Usuário não tem permissão para acessar esta pipeline"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    pipeline_name = Pipeline.normalize_pipeline_storage_name(pipeline.etl_name)
+    storage = get_storage()
+
+    try:
+        content = storage.get_output_file_bytes(pipeline_name)
+        output_file_name = storage.get_output_file_name(pipeline_name)
+    except FileNotFoundError:
+        return Response(
+            {"error": "Esta pipeline ainda não gerou nenhum arquivo de saída"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    content_type, _ = mimetypes.guess_type(output_file_name or "")
+    response = HttpResponse(content, content_type=content_type or "application/octet-stream")
+    response["Content-Disposition"] = f'attachment; filename="{output_file_name}"'
+    return response
+
+
+# View para consultar o log (stdout/stderr) de uma execucao especifica (GET)
+@extend_schema(
+    operation_id='get_pipeline_run_log',
+    description='Retorna o log de execucao (stdout/stderr) de uma run especifica da pipeline',
+    parameters=[
+        OpenApiParameter(name='pipeline_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da pipeline'),
+        OpenApiParameter(name='run_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID da execução'),
+    ],
+    responses={200: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def pipeline_run_log(request, pipeline_id, run_id):
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
+
+    if not pipeline.can_execute(request.user):
+        return Response(
+            {"error": "Usuário não tem permissão para acessar esta pipeline"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    run = get_object_or_404(PipelineRun, id=run_id, pipeline=pipeline)
+
+    return Response(
+        {"run_id": run.id, "status": run.status, "log": run.log},
+        status=status.HTTP_200_OK
+    )

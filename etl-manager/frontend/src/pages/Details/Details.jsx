@@ -13,6 +13,10 @@ const DETALHE_INICIAL = {
   main_code: "",
   created_at: null,
   status: "NOT_RUN",
+  input_file_name: null,
+  input_file_exists: false,
+  output_file_name: null,
+  output_file_exists: false,
   collaborators: [],
   trigger_sources: [],
   trigger_targets: [],
@@ -186,6 +190,8 @@ function Details() {
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const [modalCodigoAberto, setModalCodigoAberto] = useState(false);
   const [modalEnvAberto, setModalEnvAberto] = useState(false);
+  const [modalDadosAberto, setModalDadosAberto] = useState(false);
+  const [modalLogAberto, setModalLogAberto] = useState(false);
   const [modalDeleteAberto, setModalDeleteAberto] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -206,6 +212,18 @@ function Details() {
   const [configFile, setConfigFile] = useState(null);
   const [erroEnv, setErroEnv] = useState("");
   const [salvandoEnv, setSalvandoEnv] = useState(false);
+  const [dadosFile, setDadosFile] = useState(null);
+  const [erroDados, setErroDados] = useState("");
+  const [salvandoDados, setSalvandoDados] = useState(false);
+  const [removendoDados, setRemovendoDados] = useState(false);
+  const [baixandoSaida, setBaixandoSaida] = useState(false);
+  const [erroSaida, setErroSaida] = useState("");
+  const [logSelecionado, setLogSelecionado] = useState({
+    runId: null,
+    log: "",
+    carregando: false,
+    erro: "",
+  });
   const [formEdicao, setFormEdicao] = useState({
     name: "",
     description: "",
@@ -366,7 +384,7 @@ function Details() {
           : [],
         hour: Number(detalhes.schedule?.hour ?? 0),
         minute: Number(detalhes.schedule?.minute ?? 0),
-        timezone: detalhes.schedule?.timezone || "America/Sao_Paulo",
+        timezone: "America/Sao_Paulo",
       },
     });
     setNovoAnchorId("");
@@ -575,7 +593,7 @@ function Details() {
           days_of_week: scheduleDays,
           hour: scheduleHour,
           minute: scheduleMinute,
-          timezone: formEdicao.schedule.timezone || "America/Sao_Paulo",
+          timezone: "America/Sao_Paulo",
         },
       };
 
@@ -754,6 +772,112 @@ function Details() {
     }
   };
 
+  const abrirModalDados = () => {
+    setErroDados("");
+    setDadosFile(null);
+    setModalDadosAberto(true);
+  };
+
+  const enviarArquivoDados = async () => {
+    if (!dadosFile) {
+      setErroDados("Selecione um arquivo (.xlsx, .xls, .csv ou .json) para fazer upload.");
+      return;
+    }
+
+    setSalvandoDados(true);
+    setErroDados("");
+
+    try {
+      const formData = new FormData();
+      formData.append("input_file", dadosFile);
+
+      await api.post(`pipelines/${id}/input-file/`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      await buscarDados();
+      setDadosFile(null);
+      setModalDadosAberto(false);
+    } catch (error) {
+      console.error("Erro ao fazer upload do arquivo de dados:", error);
+      setErroDados(
+        error.response?.data?.error || "Não foi possível fazer upload do arquivo de dados."
+      );
+    } finally {
+      setSalvandoDados(false);
+    }
+  };
+
+  const removerArquivoDados = async () => {
+    setRemovendoDados(true);
+    setErroDados("");
+
+    try {
+      await api.delete(`pipelines/${id}/input-file/`);
+      await buscarDados();
+      setDadosFile(null);
+    } catch (error) {
+      console.error("Erro ao remover o arquivo de dados:", error);
+      setErroDados(
+        error.response?.data?.error || "Não foi possível remover o arquivo de dados."
+      );
+    } finally {
+      setRemovendoDados(false);
+    }
+  };
+
+  const baixarArquivoSaida = async () => {
+    setBaixandoSaida(true);
+    setErroSaida("");
+
+    try {
+      const response = await api.get(`pipelines/${id}/output-file/download/`, {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = detalhes.output_file_name || "output";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Erro ao baixar o arquivo de saída:", error);
+      setErroSaida("Não foi possível baixar o arquivo de saída.");
+    } finally {
+      setBaixandoSaida(false);
+    }
+  };
+
+  const abrirModalLog = async (runId) => {
+    setModalLogAberto(true);
+    setLogSelecionado({ runId, log: "", carregando: true, erro: "" });
+
+    try {
+      const response = await api.get(`pipelines/${id}/runs/${runId}/log/`);
+      setLogSelecionado({
+        runId,
+        log: response.data?.log ?? "",
+        carregando: false,
+        erro: "",
+      });
+    } catch (error) {
+      console.error("Erro ao carregar o log da execução:", error);
+      setLogSelecionado({
+        runId,
+        log: "",
+        carregando: false,
+        erro:
+          error.response?.data?.error ||
+          "Não foi possível carregar o log desta execução.",
+      });
+    }
+  };
+
   return (
     <section className="details-page">
       <div className="details-shell">
@@ -799,6 +923,23 @@ function Details() {
                     <button
                       type="button"
                       className="details-link-button"
+                      onClick={abrirModalDados}
+                    >
+                       Gerenciar arquivo de dados
+                    </button>
+                    {detalhes.output_file_exists && (
+                      <button
+                        type="button"
+                        className="details-link-button"
+                        onClick={baixarArquivoSaida}
+                        disabled={baixandoSaida}
+                      >
+                         {baixandoSaida ? "Baixando..." : "Baixar arquivo de saída"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="details-link-button"
                       onClick={abrirModalEdicao}
                     >
                        Editar
@@ -816,6 +957,10 @@ function Details() {
                 </div>
 
                 <div className="details-card-body">
+                  {erroSaida && (
+                    <div className="details-feedback error">{erroSaida}</div>
+                  )}
+
                   <div className="details-meta-grid">
                     <div className="details-block">
                       <span className="details-label">Fluxo</span>
@@ -858,6 +1003,20 @@ function Details() {
                         {detalhes.etl_name || "Não informada"}
                       </strong>
                     </div>
+
+                    <div className="details-block compact">
+                      <span className="details-label">Arquivo de dados</span>
+                      <strong className="details-value muted">
+                        {detalhes.input_file_name || "Nenhum arquivo enviado"}
+                      </strong>
+                    </div>
+
+                    <div className="details-block compact">
+                      <span className="details-label">Arquivo de saída</span>
+                      <strong className="details-value muted">
+                        {detalhes.output_file_name || "Nenhuma saída gerada ainda"}
+                      </strong>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -896,6 +1055,7 @@ function Details() {
                           <th>Início</th>
                           <th>Duração</th>
                           <th>Status</th>
+                          <th aria-hidden="true"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -908,6 +1068,15 @@ function Details() {
                             className={`details-history-status ${execucao.status.classe}`}
                           >
                             {execucao.status.label}
+                          </td>
+                          <td data-label="Log" className="details-history-log-cell">
+                            <button
+                              type="button"
+                              className="details-history-log-button"
+                              onClick={() => abrirModalLog(execucao.id)}
+                            >
+                              Ver log
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -1053,6 +1222,7 @@ function Details() {
                     <th>Início</th>
                     <th>Duração</th>
                     <th>Status</th>
+                    <th aria-hidden="true"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1066,10 +1236,69 @@ function Details() {
                       >
                         {execucao.status.label}
                       </td>
+                      <td data-label="Log" className="details-history-log-cell">
+                        <button
+                          type="button"
+                          className="details-history-log-button"
+                          onClick={() => abrirModalLog(execucao.id)}
+                        >
+                          Ver log
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalLogAberto && (
+        <div
+          className="details-modal-overlay"
+          onClick={() => setModalLogAberto(false)}
+          role="presentation"
+        >
+          <div
+            className="details-modal details-log-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="details-log-modal-title"
+          >
+            <div className="details-card-header">
+              <h2 id="details-log-modal-title">
+                Log da execução #{logSelecionado.runId}
+              </h2>
+              <button
+                type="button"
+                className="details-modal-close"
+                onClick={() => setModalLogAberto(false)}
+                aria-label="Fechar log da execução"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="details-modal-body">
+              {logSelecionado.carregando && (
+                <div className="details-feedback">Carregando log...</div>
+              )}
+
+              {!logSelecionado.carregando && logSelecionado.erro && (
+                <div className="details-feedback error details-edit-feedback">
+                  {logSelecionado.erro}
+                </div>
+              )}
+
+              {!logSelecionado.carregando && !logSelecionado.erro && (
+                <pre className="details-log-output">
+                  {logSelecionado.log.trim()
+                    ? logSelecionado.log
+                    : "Nenhum log disponível para esta execução."}
+                </pre>
+              )}
             </div>
           </div>
         </div>
@@ -1211,18 +1440,6 @@ function Details() {
                         onChange={(event) =>
                           atualizarCampoSchedule("minute", event.target.value)
                         }
-                      />
-                    </label>
-
-                    <label className="details-edit-field">
-                      <span>Timezone</span>
-                      <input
-                        type="text"
-                        value={formEdicao.schedule.timezone}
-                        onChange={(event) =>
-                          atualizarCampoSchedule("timezone", event.target.value)
-                        }
-                        placeholder="America/Sao_Paulo"
                       />
                     </label>
                   </div>
@@ -1553,6 +1770,111 @@ function Details() {
                   disabled={salvandoEnv || !configFile}
                 >
                   {salvandoEnv ? "Enviando..." : "Fazer upload"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalDadosAberto && (
+        <div
+          className="details-modal-overlay"
+          onClick={() => setModalDadosAberto(false)}
+          role="presentation"
+        >
+          <div
+            className="details-modal details-edit-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="details-dados-modal-title"
+          >
+            <div className="details-card-header">
+              <h2 id="details-dados-modal-title">Gerenciar arquivo de dados</h2>
+              <button
+                type="button"
+                className="details-modal-close"
+                onClick={() => setModalDadosAberto(false)}
+                aria-label="Fechar gerenciamento de arquivo de dados"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="details-modal-body">
+              <div className="details-edit-form">
+                <p>
+                  Faça upload de um arquivo de dados (<strong>.xlsx</strong>, <strong>.xls</strong>,{" "}
+                  <strong>.csv</strong> ou <strong>.json</strong>) para o script desta pipeline
+                  processar na próxima execução.
+                </p>
+
+                {detalhes.input_file_name ? (
+                  <div className="dados-current-file">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h3.4a1 1 0 0 1 .8.4l1.2 1.6a1 1 0 0 0 .8.4H17.5A2.5 2.5 0 0 1 20 9.9v6.6a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Z" />
+                    </svg>
+                    <span>
+                      Arquivo atual: <strong>{detalhes.input_file_name}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      className="dados-current-file-remove"
+                      onClick={removerArquivoDados}
+                      disabled={removendoDados || salvandoDados}
+                    >
+                      {removendoDados ? "Removendo..." : "Remover"}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="dados-empty-hint">
+                    Nenhum arquivo de dados enviado ainda.
+                  </p>
+                )}
+
+                {erroDados && (
+                  <div className="details-feedback error details-edit-feedback">
+                    {erroDados}
+                  </div>
+                )}
+
+                <label className="details-edit-field env-upload-field">
+                  <span>Selecione o arquivo</span>
+                  <div className="env-file-input-wrapper">
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv,.json"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setDadosFile(e.target.files[0]);
+                        }
+                      }}
+                      className="env-file-input"
+                    />
+                    <span className="env-file-name">
+                      {dadosFile ? `✓ ${dadosFile.name}` : "Clique para selecionar"}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+            <div className="details-modal-footer">
+              <div className="details-edit-actions">
+                <button
+                  type="button"
+                  className="details-edit-secondary"
+                  onClick={() => setModalDadosAberto(false)}
+                  disabled={salvandoDados}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="details-edit-primary"
+                  onClick={enviarArquivoDados}
+                  disabled={salvandoDados || !dadosFile}
+                >
+                  {salvandoDados ? "Enviando..." : "Fazer upload"}
                 </button>
               </div>
             </div>

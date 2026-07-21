@@ -6,6 +6,7 @@ import api from "../../services/api";
 function Settings() {
   const navigate = useNavigate();
   const [usuarioAtual] = useState(localStorage.getItem("username") || "Usuário");
+  const avatarInitial = usuarioAtual.charAt(0).toUpperCase() || "?";
   const [isStaff, setIsStaff] = useState(false);
   const [loadingUserInfo, setLoadingUserInfo] = useState(true);
   const [loadingPassword, setLoadingPassword] = useState(false);
@@ -31,7 +32,7 @@ function Settings() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
-    navigate("/login");
+    navigate("/login"); 
   };
 
   // Buscar informações do usuário autenticado
@@ -130,6 +131,7 @@ function Settings() {
           <div className="settings-card">
             <h2>Perfil do Usuário</h2>
             <div className="profile-section">
+              <div className="profile-avatar" aria-hidden="true">{avatarInitial}</div>
               <div className="profile-field">
                 <label className="field-label">Nome de usuário</label>
                 <div className="field-value">{usuarioAtual}</div>
