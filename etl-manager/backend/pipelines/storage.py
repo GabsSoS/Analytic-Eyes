@@ -15,6 +15,19 @@ def _validate_pipeline_name(pipeline_name: str) -> None:
         raise ValueError(f"Nome inválido de pipeline: {pipeline_name}")
 
 
+# Nome base fixo do arquivo de dados de entrada (ex.: planilha) que o script da
+# pipeline processa. A extensao original do upload e preservada (input.xlsx,
+# input.csv, ...) para que bibliotecas como pandas escolham o parser certo;
+# um novo upload sempre substitui o arquivo anterior, mesmo com extensao diferente.
+INPUT_FILE_BASENAME = "input"
+
+# Nome base fixo do arquivo de saida (ex.: output.xlsx) que o script da pipeline
+# pode gravar no seu proprio diretorio de trabalho. Mesma logica do arquivo de
+# entrada: extensao livre, um unico arquivo por pipeline, sempre substituido a
+# cada execucao (ver sync_output_from_local).
+OUTPUT_FILE_BASENAME = "output"
+
+
 class PipelineStorage(ABC):
     """Abstração para armazenamento de scripts de pipelines"""
 
@@ -56,6 +69,59 @@ class PipelineStorage(ABC):
     @abstractmethod
     def config_file_exists(self, pipeline_name: str) -> bool:
         """Verifica se um arquivo de configuração existe na pipeline"""
+        pass
+
+    @abstractmethod
+    def save_input_file(self, pipeline_name: str, filename: str, content: bytes) -> str:
+        """Salva o arquivo de dados (ex.: planilha) que o script da pipeline vai
+        processar, substituindo qualquer arquivo de dados anterior. Retorna o
+        nome final salvo (ex.: 'input.xlsx')"""
+        pass
+
+    @abstractmethod
+    def get_input_file_name(self, pipeline_name: str) -> str | None:
+        """Retorna o nome do arquivo de dados atual da pipeline, ou None se
+        nenhum arquivo foi enviado ainda"""
+        pass
+
+    @abstractmethod
+    def delete_input_file(self, pipeline_name: str) -> None:
+        """Remove o arquivo de dados da pipeline, se existir"""
+        pass
+
+    @abstractmethod
+    def input_file_exists(self, pipeline_name: str) -> bool:
+        """Verifica se a pipeline possui um arquivo de dados enviado"""
+        pass
+
+    @abstractmethod
+    def get_output_file_name(self, pipeline_name: str) -> str | None:
+        """Retorna o nome do arquivo de saida gerado pela ultima execucao
+        bem-sucedida, ou None se nenhuma execucao gerou saida"""
+        pass
+
+    @abstractmethod
+    def get_output_file_bytes(self, pipeline_name: str) -> bytes:
+        """Le o conteudo binario do arquivo de saida atual"""
+        pass
+
+    @abstractmethod
+    def save_output_file(self, pipeline_name: str, filename: str, content: bytes) -> str:
+        """Persiste o arquivo de saida na storage, substituindo o anterior.
+        Retorna o nome final salvo (ex.: 'output.xlsx')"""
+        pass
+
+    @abstractmethod
+    def delete_output_file(self, pipeline_name: str) -> None:
+        """Remove o arquivo de saida da pipeline, se existir"""
+        pass
+
+    @abstractmethod
+    def sync_output_from_local(self, pipeline_name: str, local_dir: Path) -> str | None:
+        """Depois que o container termina, garante que o arquivo de saida
+        (output.*) que o script tenha gravado em local_dir fique persistido na
+        storage. Retorna o nome do arquivo encontrado, ou None se o script nao
+        gerou nenhuma saida nesta execucao"""
         pass
 
     @abstractmethod
@@ -198,6 +264,82 @@ class LocalStorage(PipelineStorage):
         pipeline_dir = self._get_pipeline_dir(pipeline_name)
         config_file_path = pipeline_dir / "config.ini"
         return config_file_path.exists()
+
+    def save_input_file(self, pipeline_name: str, filename: str, content: bytes) -> str:
+        """Salva o arquivo de dados no disco local, substituindo o anterior"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        pipeline_dir.mkdir(parents=True, exist_ok=True)
+
+        self.delete_input_file(pipeline_name)
+
+        extension = Path(filename).suffix.lower()
+        saved_name = f"{INPUT_FILE_BASENAME}{extension}"
+        (pipeline_dir / saved_name).write_bytes(content)
+        return saved_name
+
+    def get_input_file_name(self, pipeline_name: str) -> str | None:
+        """Encontra o arquivo de dados atual (input.*) no disco local"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        if not pipeline_dir.exists():
+            return None
+
+        matches = sorted(pipeline_dir.glob(f"{INPUT_FILE_BASENAME}.*"))
+        return matches[0].name if matches else None
+
+    def delete_input_file(self, pipeline_name: str) -> None:
+        """Remove o arquivo de dados (input.*) do disco local"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        if not pipeline_dir.exists():
+            return
+
+        for match in pipeline_dir.glob(f"{INPUT_FILE_BASENAME}.*"):
+            match.unlink()
+
+    def input_file_exists(self, pipeline_name: str) -> bool:
+        """Verifica se existe um arquivo de dados (input.*) no disco local"""
+        return self.get_input_file_name(pipeline_name) is not None
+
+    def get_output_file_name(self, pipeline_name: str) -> str | None:
+        """Encontra o arquivo de saida atual (output.*) no disco local"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        if not pipeline_dir.exists():
+            return None
+
+        matches = sorted(pipeline_dir.glob(f"{OUTPUT_FILE_BASENAME}.*"))
+        return matches[0].name if matches else None
+
+    def get_output_file_bytes(self, pipeline_name: str) -> bytes:
+        """Le o conteudo binario do arquivo de saida atual"""
+        output_name = self.get_output_file_name(pipeline_name)
+        if not output_name:
+            raise FileNotFoundError(f"Nenhum arquivo de saida encontrado para {pipeline_name}")
+
+        return (self._get_pipeline_dir(pipeline_name) / output_name).read_bytes()
+
+    def save_output_file(self, pipeline_name: str, filename: str, content: bytes) -> str:
+        """Salva o arquivo de saida no disco local, substituindo o anterior"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        pipeline_dir.mkdir(parents=True, exist_ok=True)
+
+        self.delete_output_file(pipeline_name)
+
+        extension = Path(filename).suffix.lower()
+        saved_name = f"{OUTPUT_FILE_BASENAME}{extension}"
+        (pipeline_dir / saved_name).write_bytes(content)
+        return saved_name
+
+    def delete_output_file(self, pipeline_name: str) -> None:
+        """Remove o arquivo de saida (output.*) do disco local"""
+        pipeline_dir = self._get_pipeline_dir(pipeline_name)
+        if not pipeline_dir.exists():
+            return
+
+        for match in pipeline_dir.glob(f"{OUTPUT_FILE_BASENAME}.*"):
+            match.unlink()
+
+    def sync_output_from_local(self, pipeline_name: str, local_dir: Path) -> str | None:
+        """local_dir JA E a storage real; so identifica o que o script gravou"""
+        return self.get_output_file_name(pipeline_name)
 
     def sync_to_local(self, pipeline_name: str, local_dir: Path) -> None:
         """Os arquivos já residem no disco local; nada a fazer"""
@@ -370,6 +512,106 @@ class S3Storage(PipelineStorage):
     def config_file_exists(self, pipeline_name: str) -> bool:
         """Verifica se um arquivo config.ini existe no bucket S3"""
         return self._object_exists(self._get_key(pipeline_name, "config.ini"))
+
+    def save_input_file(self, pipeline_name: str, filename: str, content: bytes) -> str:
+        """Salva o arquivo de dados no bucket S3, substituindo o anterior"""
+        self.delete_input_file(pipeline_name)
+
+        extension = Path(filename).suffix.lower()
+        saved_name = f"{INPUT_FILE_BASENAME}{extension}"
+        self.client.put_object(
+            Bucket=self.bucket,
+            Key=self._get_key(pipeline_name, saved_name),
+            Body=content,
+        )
+        return saved_name
+
+    def get_input_file_name(self, pipeline_name: str) -> str | None:
+        """Encontra o arquivo de dados atual (input.*) no bucket S3"""
+        prefix = self._pipeline_prefix(pipeline_name)
+        response = self.client.list_objects_v2(
+            Bucket=self.bucket,
+            Prefix=f"{prefix}{INPUT_FILE_BASENAME}.",
+            MaxKeys=1,
+        )
+        contents = response.get("Contents", [])
+        if not contents:
+            return None
+
+        return contents[0]["Key"][len(prefix):]
+
+    def delete_input_file(self, pipeline_name: str) -> None:
+        """Remove o arquivo de dados (input.*) do bucket S3"""
+        current_name = self.get_input_file_name(pipeline_name)
+        if current_name:
+            self._delete_object_if_exists(self._get_key(pipeline_name, current_name))
+
+    def input_file_exists(self, pipeline_name: str) -> bool:
+        """Verifica se existe um arquivo de dados (input.*) no bucket S3"""
+        return self.get_input_file_name(pipeline_name) is not None
+
+    def get_output_file_name(self, pipeline_name: str) -> str | None:
+        """Encontra o arquivo de saida atual (output.*) no bucket S3"""
+        prefix = self._pipeline_prefix(pipeline_name)
+        response = self.client.list_objects_v2(
+            Bucket=self.bucket,
+            Prefix=f"{prefix}{OUTPUT_FILE_BASENAME}.",
+            MaxKeys=1,
+        )
+        contents = response.get("Contents", [])
+        if not contents:
+            return None
+
+        return contents[0]["Key"][len(prefix):]
+
+    def get_output_file_bytes(self, pipeline_name: str) -> bytes:
+        """Le o conteudo binario do arquivo de saida atual no bucket S3"""
+        output_name = self.get_output_file_name(pipeline_name)
+        if not output_name:
+            raise FileNotFoundError(f"Nenhum arquivo de saida encontrado para {pipeline_name}")
+
+        try:
+            response = self.client.get_object(
+                Bucket=self.bucket, Key=self._get_key(pipeline_name, output_name)
+            )
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in ("404", "NoSuchKey"):
+                raise FileNotFoundError(
+                    f"Nenhum arquivo de saida encontrado para {pipeline_name}"
+                ) from exc
+            raise
+
+        return response["Body"].read()
+
+    def save_output_file(self, pipeline_name: str, filename: str, content: bytes) -> str:
+        """Salva o arquivo de saida no bucket S3, substituindo o anterior"""
+        self.delete_output_file(pipeline_name)
+
+        extension = Path(filename).suffix.lower()
+        saved_name = f"{OUTPUT_FILE_BASENAME}{extension}"
+        self.client.put_object(
+            Bucket=self.bucket,
+            Key=self._get_key(pipeline_name, saved_name),
+            Body=content,
+        )
+        return saved_name
+
+    def delete_output_file(self, pipeline_name: str) -> None:
+        """Remove o arquivo de saida (output.*) do bucket S3"""
+        current_name = self.get_output_file_name(pipeline_name)
+        if current_name:
+            self._delete_object_if_exists(self._get_key(pipeline_name, current_name))
+
+    def sync_output_from_local(self, pipeline_name: str, local_dir: Path) -> str | None:
+        """Procura um arquivo output.* na copia local usada pelo container e,
+        se existir, envia para o S3 antes que cleanup_local apague a copia
+        temporaria (ver execute_pipeline em tasks.py)"""
+        matches = sorted(Path(local_dir).glob(f"{OUTPUT_FILE_BASENAME}.*"))
+        if not matches:
+            return None
+
+        output_path = matches[0]
+        return self.save_output_file(pipeline_name, output_path.name, output_path.read_bytes())
 
     def sync_to_local(self, pipeline_name: str, local_dir: Path) -> None:
         """Baixa todos os arquivos da pipeline do S3 para local_dir no disco

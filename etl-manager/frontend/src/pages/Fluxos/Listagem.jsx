@@ -137,11 +137,26 @@ function Fluxos() {
       ? "Nenhum fluxo criado por você."
       : "Nenhum fluxo compartilhado com você.";
 
+  const iniciais = (nome) =>
+    String(nome ?? "?")
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "?";
+
   return (
     <section className="fluxos-page">
       <div className="fluxos-shell">
         <header className="fluxos-header">
-          <h1>Fluxos</h1>
+          <div>
+            <h1>Fluxos</h1>
+            <p className="fluxos-subtitle">Gerencie e acompanhe seus pipelines de dados</p>
+          </div>
+          <button type="button" className="fluxos-new-button" onClick={() => navigate("/criar")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Novo fluxo
+          </button>
         </header>
 
         <div className="fluxos-tabs" role="tablist" aria-label="Categorias de fluxos">
@@ -162,38 +177,67 @@ function Fluxos() {
         </div>
 
         <div className="fluxos-table-wrapper">
-          <table className="fluxos-table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Última execução</th>
-                <th>Proprietário</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fluxosFiltrados.map((fluxo) => (
-                <tr
-                  key={fluxo.id}
-                  className="fluxos-row-clickable"
-                  onClick={() => abrirDetalhes(fluxo.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      abrirDetalhes(fluxo.id);
-                    }
-                  }}
-                  tabIndex={0}
-                >
-                  <td data-label="Nome">{fluxo.nome}</td>
-                  <td data-label="Última execução">{fluxo.ultimaExecucao}</td>
-                  <td data-label="Proprietário">{fluxo.proprietario}</td>
+          {fluxosFiltrados.length > 0 && (
+            <table className="fluxos-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Última execução</th>
+                  <th>Proprietário</th>
+                  <th aria-hidden="true"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {fluxosFiltrados.map((fluxo) => (
+                  <tr
+                    key={fluxo.id}
+                    className="fluxos-row-clickable"
+                    onClick={() => abrirDetalhes(fluxo.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        abrirDetalhes(fluxo.id);
+                      }
+                    }}
+                    tabIndex={0}
+                  >
+                    <td data-label="Nome">
+                      <span className="fluxos-name-cell">
+                        <span className="fluxos-name-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                          </svg>
+                        </span>
+                        {fluxo.nome}
+                      </span>
+                    </td>
+                    <td data-label="Última execução">{fluxo.ultimaExecucao}</td>
+                    <td data-label="Proprietário">
+                      <span className="fluxos-owner-cell">
+                        <span className="fluxos-owner-avatar">{iniciais(fluxo.proprietario)}</span>
+                        {fluxo.proprietario}
+                      </span>
+                    </td>
+                    <td className="fluxos-chevron-cell" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m9 6 6 6-6 6" />
+                      </svg>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
           {!carregando && fluxosFiltrados.length === 0 && (
-            <div className="fluxos-empty-state">{tituloAba}</div>
+            <div className="fluxos-empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="7" height="6" rx="1.5" />
+                <rect x="14" y="4" width="7" height="6" rx="1.5" />
+                <rect x="8.5" y="14" width="7" height="6" rx="1.5" />
+              </svg>
+              <p>{tituloAba}</p>
+            </div>
           )}
 
           {carregando && <div className="fluxos-empty-state">Carregando fluxos...</div>}

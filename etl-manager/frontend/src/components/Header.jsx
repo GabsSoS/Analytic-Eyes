@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import Logo from "../assets/components/Logo 4.png";
-import Lupa from "../assets/components/Lupa.png";
-import Info from "../assets/components/Info App.png";
 import api from "../services/api";
 import "./Header.css";
 
@@ -20,6 +17,8 @@ function Header() {
   const [pipelines, setPipelines] = useState([]);
   const [loading, setLoading] = useState(false);
   const [aberto, setAberto] = useState(false);
+  const username = localStorage.getItem("username") || "";
+  const initial = username ? username.charAt(0).toUpperCase() : "?";
 
   const telasFiltradas = TELAS.filter((t) =>
     t.label.toLowerCase().includes(query.toLowerCase())
@@ -79,13 +78,33 @@ function Header() {
   };
 
   return (
-    <nav className="Cabeçalho">
-      <img src={Logo} alt="Analitical Eyes" />
+    <header className="app-header">
+      <button
+        type="button"
+        className="app-header-brand"
+        onClick={() => navigate("/home")}
+      >
+        <span className="app-header-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path
+              d="M2 12c2.5-5 6.5-8 10-8s7.5 3 10 8c-2.5 5-6.5 8-10 8s-7.5-3-10-8Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <circle cx="12" cy="12" r="3.4" fill="currentColor" />
+          </svg>
+        </span>
+        <span className="app-header-title">Analytic Eyes</span>
+      </button>
 
-      <div className="barra-de-pesquisa" ref={wrapperRef}>
-        <img className="img-lupa" src={Lupa} alt="Lupa" />
+      <div className="app-header-search" ref={wrapperRef}>
+        <svg className="app-header-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
         <input
-          className="texto-pesquisa"
+          className="app-header-search-input"
           type="search"
           placeholder="Procure por fluxos ou telas..."
           value={query}
@@ -150,8 +169,30 @@ function Header() {
         )}
       </div>
 
-      <img className="infoapp" src={Info} alt="Informações do app" />
-    </nav>
+      <div className="app-header-actions">
+        <button
+          type="button"
+          className="app-header-icon-btn"
+          aria-label="Ajuda"
+          title="Ajuda"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.5 9a2.5 2.5 0 1 1 3.4 2.32c-.72.3-1.4.9-1.4 1.68v.3" />
+            <path d="M12 17h.01" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          className="app-header-avatar"
+          onClick={() => navigate("/settings")}
+          title={username || "Conta"}
+        >
+          {initial}
+        </button>
+      </div>
+    </header>
   );
 }
 
