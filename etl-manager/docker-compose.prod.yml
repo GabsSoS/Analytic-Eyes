@@ -15,6 +15,7 @@ services:
     environment:
       CONTAINERS: 1
       IMAGES: 1
+      NETWORKS: 1
       POST: 1
     networks:
       - etl-network-prod
