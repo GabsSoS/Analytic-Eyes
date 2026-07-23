@@ -56,14 +56,23 @@ terraform plan   # confira os recursos antes de aplicar - eles custam dinheiro r
 terraform apply
 ```
 
-Ao final, os `outputs` trazem `ec2_public_ip`, `db_secret_arn`, `db_name` e
-`s3_bucket_name` - é isso que vai para o `etl-manager/.env` real:
+Ao final, os `outputs` trazem `ec2_public_ip`, `db_secret_arn`, `db_name`,
+`db_endpoint`, `db_port` e `s3_bucket_name` - é isso que vai para o
+`etl-manager/.env` real:
 
 ```
 DB_SECRET_ARN=<output db_secret_arn>
 DB_NAME=<output db_name>
+DB_HOST=<output db_endpoint>
+DB_PORT=<output db_port>
 AWS_STORAGE_BUCKET_NAME=<output s3_bucket_name>
 ```
+
+**Importante**: o secret gerenciado pela RDS (`manage_master_user_password`)
+só contém `{"username": "...", "password": "..."}` - nada de host/port/
+dbname. `DB_HOST`/`DB_PORT`/`DB_NAME` são sempre necessários no `.env`,
+mesmo com `DB_USE_SECRETS_MANAGER=true` (confirmado rodando em produção -
+a suposição inicial de que o secret traria host/port também estava errada).
 
 (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` continuam em branco - a EC2 já
 tem a IAM Role anexada.)

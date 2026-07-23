@@ -14,7 +14,13 @@ output "db_name" {
 }
 
 output "db_endpoint" {
-  value = module.rds.endpoint
+  description = "Vira DB_HOST no etl-manager/.env (produção). O secret gerenciado pela RDS só tem username/password - host e port vêm daqui, não do secret."
+  value       = module.rds.endpoint
+}
+
+output "db_port" {
+  description = "Vira DB_PORT no etl-manager/.env (produção)."
+  value       = module.rds.port
 }
 
 output "s3_bucket_name" {
