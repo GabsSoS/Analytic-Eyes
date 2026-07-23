@@ -83,7 +83,7 @@ services:
       dockerfile: Dockerfile.prod
     container_name: etl-worker-prod
     restart: unless-stopped
-    command: sh -c "celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-30} --prefetch-multiplier=1 -Ofair --max-tasks-per-child=50"
+    command: sh -c "celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-4} --prefetch-multiplier=1 -Ofair --max-tasks-per-child=50"
     environment:
       DJANGO_SETTINGS_MODULE: config.settings_prod
       SECRET_KEY: ${SECRET_KEY}
@@ -92,7 +92,7 @@ services:
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://analytic-eyes.com,https://www.analytic-eyes.com,http://localhost,http://127.0.0.1}
       ETL_DOCKER_NETWORK: etl-manager_etl-network-prod
       ETL_CONTAINER_MEM_LIMIT: ${ETL_CONTAINER_MEM_LIMIT:-512m}
-      CELERY_WORKER_CONCURRENCY: ${CELERY_WORKER_CONCURRENCY:-30}
+      CELERY_WORKER_CONCURRENCY: ${CELERY_WORKER_CONCURRENCY:-4}
       DOCKER_HOST: tcp://socket-proxy:2375
       DB_SECRET_ARN: ${DB_SECRET_ARN}
       DB_USE_SECRETS_MANAGER: ${DB_USE_SECRETS_MANAGER:-true}

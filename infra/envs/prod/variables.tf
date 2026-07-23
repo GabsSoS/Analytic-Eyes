@@ -65,6 +65,7 @@ variable "db_skip_final_snapshot" {
 # --- EC2 ---
 
 variable "ec2_instance_type" {
-  type    = string
-  default = "t3.small"
+  description = "t3.medium (padrão atual): t3.small ficou sem memória com o worker do Celery + backend + redis + nginx no mesmo host e chegou a travar até o SSH. Se quiser voltar a testar com t3.small, baixe antes CELERY_WORKER_CONCURRENCY no .env da app (ex: 2-4 em vez de 30)."
+  type        = string
+  default     = "t3.medium"
 }

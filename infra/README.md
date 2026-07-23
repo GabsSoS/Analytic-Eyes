@@ -109,7 +109,7 @@ da AWS](https://calculator.aws) antes de aplicar.
 
 | Recurso | Custo aproximado | Observação |
 |---|---|---|
-| EC2 t3.small | ~US$15/mês (on-demand, 24/7) | Pode cair para `t3.micro` para só validar a integração |
+| EC2 t3.medium | ~US$30/mês (on-demand, 24/7) | t3.small (~US$15/mês) travou em produção com o worker do Celery em `CELERY_WORKER_CONCURRENCY=30` - se baixar isso para 2-4 no `.env` da app, t3.small volta a ser viável |
 | RDS db.t4g.micro Single-AZ | ~US$0-12/mês | Elegível a free tier em contas novas/elegíveis |
 | S3 (bucket pipelines) | Centavos | Só paga o storage real usado |
 | Secrets Manager | ~US$0.40/mês | Um secret (o gerenciado pelo RDS) |
@@ -154,3 +154,18 @@ ALB+ACM em vez de Certbot manual.
     residencial de cada um em vez do IP fixo da VPN, e ficaria bloqueado.
 - `terraform.tfvars` é gitignored (contém sua chave pública SSH e o CIDR do
   seu IP) - use `terraform.tfvars.example` como referência.
+
+## Acesso de emergência (SSM Session Manager)
+
+Além do SSH, a IAM Role da EC2 tem a policy `AmazonSSMManagedInstanceCore`
+anexada (`modules/iam/main.tf`), então dá pra entrar na instância pelo
+console AWS (EC2 → instância → **Connect** → **Session Manager**) ou via
+CLI:
+
+```bash
+aws ssm start-session --target <instance-id>
+```
+
+Isso não depende da porta 22 nem do Security Group de SSH - funciona mesmo
+que o `sshd` esteja sem responder (foi exatamente esse cenário, com o
+worker do Celery saturando a instância, que motivou anexar essa policy).

@@ -86,3 +86,15 @@ resource "aws_iam_role_policy" "s3" {
   role   = aws_iam_role.ec2.id
   policy = data.aws_iam_policy_document.s3.json
 }
+
+# Permite acessar a EC2 via SSM Session Manager (console AWS ou `aws ssm
+# start-session`), sem depender da porta 22/SSH. Foi anexada manualmente
+# durante um incidente em que o worker do Celery saturou a instância e o
+# sshd parou de responder a novas conexões - com essa policy, o Session
+# Manager continua funcionando como canal de acesso de emergência mesmo
+# quando o SSH não responde (ele não depende de spawnar um processo novo
+# via porta 22, usa o agente SSM já residente).
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
