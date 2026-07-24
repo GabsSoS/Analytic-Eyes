@@ -39,6 +39,11 @@ urlpatterns = [
     # Listagem de usuários
     path("users/", views.list_users, name='list_users'),
 
+    # Gerenciamento de usuários (admin)
+    path("users/<int:user_id>/toggle-staff/", views.toggle_user_staff, name='toggle_user_staff'),
+    path("users/<int:user_id>/toggle-active/", views.toggle_user_active, name='toggle_user_active'),
+    path("users/<int:user_id>/reset-password/", views.reset_user_password, name='reset_user_password'),
+
     # Logout
     path("auth/logout/", views.logout, name='logout'),
 ]

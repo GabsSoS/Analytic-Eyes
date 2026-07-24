@@ -8,7 +8,21 @@ from .secrets_manager import SecretsManagerConfigError, get_db_credentials
 
 DEBUG = False
 
-SECRET_KEY = os.getenv("SECRET_KEY", SECRET_KEY)
+if not os.getenv("SECRET_KEY"):
+    raise ImproperlyConfigured(
+        "SECRET_KEY não configurado. Produção nunca deve usar o valor de "
+        "desenvolvimento (hardcoded em settings.py) - defina SECRET_KEY no "
+        ".env com um valor forte e único (ex: python -c \"import secrets; "
+        "print(secrets.token_urlsafe(50))\")."
+    )
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+if not os.getenv("REDIS_PASSWORD"):
+    raise ImproperlyConfigured(
+        "REDIS_PASSWORD não configurado. Produção não deve rodar o Redis "
+        "sem autenticação - defina REDIS_PASSWORD no .env (mesmo valor "
+        "usado pelo serviço redis no docker-compose.prod.yml)."
+    )
 
 ALLOWED_HOSTS = [
     host.strip()
