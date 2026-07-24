@@ -772,6 +772,7 @@ def create_user(request):
 
     username = request.data.get("username")
     password = request.data.get("password")
+    is_staff = bool(request.data.get("is_staff", False))
 
     if not username or not password:
         return Response(
@@ -785,9 +786,9 @@ def create_user(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    user = User.objects.create_user(username=username, password=password)
+    user = User.objects.create_user(username=username, password=password, is_staff=is_staff)
     return Response(
-        {"message": "Usuário criado com sucesso", "username": user.username},
+        {"message": "Usuário criado com sucesso", "username": user.username, "is_staff": user.is_staff},
         status=status.HTTP_201_CREATED
     )
 
@@ -808,8 +809,172 @@ def list_users(request):
     if q:
         qs = qs.filter(username__icontains=q)
 
-    data = [{"id": u.id, "username": u.username} for u in qs.order_by("username")[:200]]
+    # Staff ve campos extras (is_staff/is_active) pra tela de gerenciamento
+    # de usuarios; demais usuarios continuam recebendo so id/username
+    # (usado pra selecionar colaboradores em pipelines).
+    if request.user.is_staff:
+        data = [
+            {
+                "id": u.id,
+                "username": u.username,
+                "is_staff": u.is_staff,
+                "is_active": u.is_active,
+            }
+            for u in qs.order_by("username")[:200]
+        ]
+    else:
+        data = [{"id": u.id, "username": u.username} for u in qs.order_by("username")[:200]]
+
     return Response({"users": data}, status=status.HTTP_200_OK)
+
+
+# Promove/remove um usuário de administrador (staff) (POST)
+@extend_schema(
+    operation_id='toggle_user_staff',
+    description='Alterna o status de administrador (is_staff) de um usuário. Apenas staff pode chamar. Remover o admin de outro admin exige superusuário. Bloqueia remover o último administrador do sistema.',
+    parameters=[
+        OpenApiParameter(name='user_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID do usuário')
+    ],
+    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def toggle_user_staff(request, user_id):
+    if not request.user.is_staff:
+        return Response(
+            {"error": "Apenas usuários administradores podem alterar permissões de administrador"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    target = get_object_or_404(User, id=user_id)
+
+    # So um superusuario pode mexer no status de admin de OUTRO admin -
+    # sem isso, qualquer staff conseguiria remover o superusuario real
+    # (basta existir um segundo staff pra burlar a checagem de "ultimo
+    # admin" abaixo). Promover um usuario comum a admin continua livre
+    # pra qualquer staff (e o proprio usuario pode se autodemover).
+    if target.is_staff and target.id != request.user.id and not request.user.is_superuser:
+        return Response(
+            {"error": "Apenas um superusuário pode remover o acesso de outro administrador"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if target.is_staff and User.objects.filter(is_staff=True).count() <= 1:
+        return Response(
+            {"error": "Não é possível remover o último administrador do sistema"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    target.is_staff = not target.is_staff
+    target.save(update_fields=["is_staff"])
+
+    return Response(
+        {"id": target.id, "username": target.username, "is_staff": target.is_staff},
+        status=status.HTTP_200_OK
+    )
+
+
+# Ativa/desativa a conta de um usuário (POST) - usado como "excluir conta":
+# desativar em vez de apagar de verdade, ja que User e FK em Pipeline.owner
+# (on_delete=CASCADE) - deletar de verdade apagaria as pipelines da pessoa.
+@extend_schema(
+    operation_id='toggle_user_active',
+    description='Ativa ou desativa a conta de um usuário. Apenas staff pode chamar. Não é possível desativar a própria conta. Desativar outro admin exige superusuário.',
+    parameters=[
+        OpenApiParameter(name='user_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID do usuário')
+    ],
+    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def toggle_user_active(request, user_id):
+    if not request.user.is_staff:
+        return Response(
+            {"error": "Apenas usuários administradores podem ativar/desativar contas"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    target = get_object_or_404(User, id=user_id)
+
+    if target.id == request.user.id:
+        return Response(
+            {"error": "Você não pode desativar sua própria conta"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # So um superusuario pode ativar/desativar OUTRO admin - sem isso,
+    # qualquer staff conseguiria derrubar a sessao do superusuario real
+    # (a desativacao ja apaga o token na hora, e is_active=False bloqueia
+    # login de volta). Desativar usuario comum continua livre.
+    if target.is_staff and not request.user.is_superuser:
+        return Response(
+            {"error": "Apenas um superusuário pode ativar/desativar outro administrador"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    target.is_active = not target.is_active
+    target.save(update_fields=["is_active"])
+
+    # Desativou: derruba a sessão da pessoa na hora, nao so no proximo login
+    if not target.is_active:
+        Token.objects.filter(user=target).delete()
+
+    return Response(
+        {"id": target.id, "username": target.username, "is_active": target.is_active},
+        status=status.HTTP_200_OK
+    )
+
+
+# Admin redefine a senha de outro usuário (POST)
+@extend_schema(
+    operation_id='reset_user_password',
+    description='Redefine a senha de outro usuário. Apenas staff pode chamar. Redefinir a senha de outro admin exige superusuário. Invalida o token de sessão atual do usuário-alvo.',
+    parameters=[
+        OpenApiParameter(name='user_id', type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID do usuário')
+    ],
+    request=OpenApiTypes.OBJECT,
+    responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 403: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+)
+@api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def reset_user_password(request, user_id):
+    if not request.user.is_staff:
+        return Response(
+            {"error": "Apenas usuários administradores podem redefinir a senha de outros usuários"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    target = get_object_or_404(User, id=user_id)
+
+    # So um superusuario pode redefinir a senha de OUTRO admin - sem isso,
+    # qualquer staff conseguiria assumir a conta do superusuario real
+    # (descobre o id via list_users, redefine a senha, loga como ele).
+    if target.is_staff and target.id != request.user.id and not request.user.is_superuser:
+        return Response(
+            {"error": "Apenas um superusuário pode redefinir a senha de outro administrador"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    new_password = request.data.get("new_password")
+
+    if not new_password or len(new_password) < 6:
+        return Response(
+            {"error": "A nova senha deve ter pelo menos 6 caracteres"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    target.set_password(new_password)
+    target.save()
+    Token.objects.filter(user=target).delete()
+
+    return Response(
+        {"message": f"Senha de {target.username} redefinida com sucesso"},
+        status=status.HTTP_200_OK
+    )
+
 
 # Estatísticas resumidas das pipelines visíveis ao usuário (GET)
 @extend_schema(

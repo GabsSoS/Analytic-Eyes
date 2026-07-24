@@ -31,5 +31,12 @@ RUN set -e; \
 		pip install --no-cache-dir --upgrade --force-reinstall -r "$f"; \
 	done
 
+# Continua rodando como root de proposito: "/etls" e sempre um bind mount
+# do host (arquivos clonados do git ou montados do disco em dev) - forcar
+# um usuario nao-root aqui arriscaria um mismatch de UID entre o dono real
+# dos arquivos no host e o usuario do container, quebrando a leitura do
+# runner.py/scripts das pipelines. Ver docker-compose*.yml (volumes_from /
+# bind mount de ./etls).
+
 # Quando o container inicia, executa o runner
 ENTRYPOINT ["python", "runner.py"]

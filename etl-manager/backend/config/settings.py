@@ -65,9 +65,15 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.ScopedRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'login': '5/min',
+        # Limite geral pra qualquer endpoint sem throttle_scope proprio -
+        # antes so o login tinha limite, o resto da API era ilimitado.
+        'user': '120/min',
+        'anon': '20/min',
     },
 }
 
@@ -174,7 +180,11 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-CELERY_BROKER_URL = "redis://redis:6379/0"
+# Senha do Redis: opcional em dev (fica em branco = sem auth, igual antes),
+# mas deve ser definida em produção - REDIS_PASSWORD no .env.
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+_redis_auth = f":{REDIS_PASSWORD}@" if REDIS_PASSWORD else ""
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or f"redis://{_redis_auth}redis:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
