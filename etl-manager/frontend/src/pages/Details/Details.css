@@ -902,6 +902,59 @@
   margin-left: 8px;
 }
 
+/* ── Instruções de upload do arquivo de dados (modal) ── */
+
+.dados-upload-instructions {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--info-soft);
+  border: 1px solid var(--info-border);
+  border-radius: var(--radius-sm);
+}
+
+.dados-upload-instructions svg {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  stroke: var(--info);
+  fill: none;
+  stroke-width: 1.8;
+}
+
+.dados-upload-instructions strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.dados-upload-instructions p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.dados-upload-instructions code {
+  background: var(--surface);
+  border: 1px solid var(--info-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+.dados-upload-instructions ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
 /* ── Arquivo de dados atual (modal) ── */
 
 .dados-empty-hint {

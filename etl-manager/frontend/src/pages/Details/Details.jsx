@@ -940,6 +940,7 @@ function Details() {
                     <button
                       type="button"
                       className="details-link-button"
+                      data-tour="details-editar"
                       onClick={abrirModalEdicao}
                     >
                        Editar
@@ -1093,7 +1094,7 @@ function Details() {
             </div>
 
             <aside className="details-side-column">
-              <section className="details-card">
+              <section className="details-card" data-tour="details-colaboradores">
                 <div className="details-card-header">
                   <h2>Colaboradores</h2>
                 </div>
@@ -1114,7 +1115,7 @@ function Details() {
                 </div>
               </section>
 
-              <section className="details-card">
+              <section className="details-card" data-tour="details-ancoragem">
                 <div className="details-card-header">
                   <h2>Ancoragens</h2>
                 </div>
@@ -1154,7 +1155,7 @@ function Details() {
                 </div>
               </section>
 
-              <section className="details-card">
+              <section className="details-card" data-tour="details-agendamento">
                 <div className="details-card-header">
                   <h2>Agendamento</h2>
                 </div>
@@ -1808,6 +1809,26 @@ function Details() {
                   <strong>.csv</strong> ou <strong>.json</strong>) para o script desta pipeline
                   processar na próxima execução.
                 </p>
+
+                <div className="dados-upload-instructions">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 8v.01M12 11v5" strokeLinecap="round" />
+                  </svg>
+                  <div>
+                    <strong>Como ler esse arquivo no seu script</strong>
+                    <p>
+                      Independente do nome original do arquivo, ele fica disponível para o script
+                      sempre como <code>input.&lt;extensão&gt;</code> (ex.: <code>input.csv</code>,{" "}
+                      <code>input.xlsx</code>) no diretório de trabalho da pipeline — não use o nome
+                      original do upload no código.
+                    </p>
+                    <ul>
+                      <li><strong>Formatos aceitos:</strong> .xlsx, .xls, .csv, .json</li>
+                      <li><strong>Tamanho máximo:</strong> 100MB</li>
+                    </ul>
+                  </div>
+                </div>
 
                 {detalhes.input_file_name ? (
                   <div className="dados-current-file">

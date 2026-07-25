@@ -89,7 +89,11 @@ function Sidebar() {
             const active = isActive(item);
             return (
               <li key={item.key} className={`app-sidebar-item ${active ? "active" : ""}`}>
-                <Link to={item.path} title={collapsed ? item.label : undefined}>
+                <Link
+                  to={item.path}
+                  title={collapsed ? item.label : undefined}
+                  data-tour={`nav-${item.key}`}
+                >
                   <span className="app-sidebar-icon">{NAV_ICONS[item.key]}</span>
                   <span className="app-sidebar-label">{item.label}</span>
                 </Link>

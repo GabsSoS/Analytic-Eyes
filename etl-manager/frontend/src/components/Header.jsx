@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { useTour } from "../context/TourContext";
 import "./Header.css";
 
 const TELAS = [
@@ -12,6 +13,7 @@ const TELAS = [
 
 function Header() {
   const navigate = useNavigate();
+  const { startTour } = useTour();
   const wrapperRef = useRef(null);
   const [query, setQuery] = useState("");
   const [pipelines, setPipelines] = useState([]);
@@ -98,7 +100,7 @@ function Header() {
         <span className="app-header-title">Analytic Eyes</span>
       </button>
 
-      <div className="app-header-search" ref={wrapperRef}>
+      <div className="app-header-search" ref={wrapperRef} data-tour="header-search">
         <svg className="app-header-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="11" cy="11" r="7" />
           <path d="m21 21-4.3-4.3" />
@@ -173,8 +175,10 @@ function Header() {
         <button
           type="button"
           className="app-header-icon-btn"
-          aria-label="Ajuda"
-          title="Ajuda"
+          aria-label="Ajuda - refazer o tour guiado"
+          title="Refazer o tour guiado"
+          data-tour="header-help"
+          onClick={() => startTour()}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="9" />

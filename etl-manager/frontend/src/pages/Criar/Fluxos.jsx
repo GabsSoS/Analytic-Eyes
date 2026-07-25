@@ -369,7 +369,7 @@ function Criar() {
           <p>Configure as informações, o script e as dependências do seu pipeline.</p>
         </header>
 
-        <div className="step-card">
+        <div className="step-card" data-tour="criar-geral">
           <div className="step-card-header">
             <span className="step-badge">1</span>
             <h3>Configurações gerais</h3>
@@ -438,7 +438,7 @@ function Criar() {
           </div>
         </div>
 
-        <div className="step-card">
+        <div className="step-card" data-tour="criar-script">
           <div className="step-card-header">
             <span className="step-badge">2</span>
             <h3>Lógica e script</h3>
@@ -494,7 +494,7 @@ function Criar() {
           </div>
         </div>
 
-        <div className="step-card">
+        <div className="step-card" data-tour="criar-config">
           <div className="step-card-header">
             <span className="step-badge">2</span>
             <h3>Arquivo de configuração (.env / config.ini) — opcional</h3>
@@ -536,7 +536,7 @@ function Criar() {
           </div>
         </div>
 
-        <div className="step-card">
+        <div className="step-card" data-tour="criar-libs">
           <div className="step-card-header">
             <span className="step-badge">3</span>
             <h3>Bibliotecas</h3>
@@ -581,6 +581,7 @@ function Criar() {
               <button
                 type="button"
                 className="btn-criar-fluxo"
+                data-tour="criar-submit"
                 onClick={handleSubmitPipeline}
                 disabled={isSubmitting}
               >

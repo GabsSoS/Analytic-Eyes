@@ -152,7 +152,7 @@ def _decode_uploaded_text_file(uploaded_file, expected_extensions, form_field_na
 
 # Extensoes aceitas para o arquivo de dados processado pelo script
 INPUT_FILE_ALLOWED_EXTENSIONS = [".xlsx", ".xls", ".csv", ".json"]
-INPUT_FILE_MAX_SIZE = 20_000_000  # 20MB
+INPUT_FILE_MAX_SIZE = 100_000_000  # 100MB
 
 
 def _read_uploaded_binary_file(uploaded_file, expected_extensions, form_field_name):
@@ -1204,7 +1204,7 @@ def manage_pipeline_input_file(request, pipeline_id):
 
     if input_file.size > INPUT_FILE_MAX_SIZE:
         return Response(
-            {"error": "Arquivo de dados maior que 20MB"},
+            {"error": "Arquivo de dados maior que 100MB"},
             status=status.HTTP_400_BAD_REQUEST
         )
 
