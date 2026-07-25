@@ -205,6 +205,13 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+# Django rejeita o corpo inteiro da requisição acima desse tamanho antes
+# mesmo de chegar na view (padrão: 2.5MB) - precisa acompanhar o limite de
+# upload de arquivo de dados da pipeline (ver INPUT_FILE_MAX_SIZE em
+# pipelines/views.py, hoje 100MB). Uma margem de 5MB cobre os demais campos
+# do multipart (nome do arquivo, etc.).
+DATA_UPLOAD_MAX_MEMORY_SIZE = 105_000_000
+
 # Pipeline Storage Configuration
 # "local" ou "s3" - deve ser configurado via variável de ambiente
 PIPELINE_STORAGE_TYPE = os.getenv("PIPELINE_STORAGE_TYPE")
