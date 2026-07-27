@@ -188,6 +188,10 @@ crash.*.log
 terraform.tfvars
 !terraform.tfvars.example
 
+# Deploy (contém IP da EC2 e caminho da chave SSH)
+infra/deploy.env
+!infra/deploy.env.example
+
 # Cursor  
 #  Cursor is an AI-powered code editor.`.cursorignore` specifies files/directories to 
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data

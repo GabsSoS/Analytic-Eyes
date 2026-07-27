@@ -77,13 +77,23 @@ a suposição inicial de que o secret traria host/port também estava errada).
 (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` continuam em branco - a EC2 já
 tem a IAM Role anexada.)
 
-### 3. Deploy da aplicação (manual, como hoje)
+### 3. Deploy da aplicação
+
+Primeiro deploy (manual, uma única vez - precisa preencher o `.env`):
 
 ```bash
 ssh -i ~/.ssh/sua-chave ubuntu@<ec2_public_ip>
 git clone <repo> && cd Analytic-Eyes/etl-manager
 # preencher .env com os outputs acima
 docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Depois disso, use `infra/deploy.sh` para publicar atualizações (clona se
+`REMOTE_DIR` ainda não existir, senão só dá `git pull` + rebuild):
+
+```bash
+cp infra/deploy.env.example infra/deploy.env   # uma vez, preencha EC2_HOST/SSH_KEY
+./infra/deploy.sh
 ```
 
 ### 4. TLS (Certbot, depois do DNS apontado)
