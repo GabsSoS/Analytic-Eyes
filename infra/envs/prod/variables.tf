@@ -1,6 +1,7 @@
 variable "aws_region" {
-  type    = string
-  default = "us-east-1"
+  description = "Região AWS onde a infra de prod será criada."
+  type        = string
+  default     = "us-east-1"
 }
 
 variable "name_prefix" {
@@ -42,18 +43,21 @@ variable "s3_bucket_name" {
 # --- RDS ---
 
 variable "db_name" {
-  type    = string
-  default = "analytic_eyes"
+  description = "Nome do banco inicial criado na instância RDS (equivalente ao DB_NAME da app Django)."
+  type        = string
+  default     = "analytic_eyes"
 }
 
 variable "db_master_username" {
-  type    = string
-  default = "app_admin"
+  description = "Usuário master do banco RDS (a senha é gerada e gerenciada pelo Secrets Manager, nunca aparece aqui)."
+  type        = string
+  default     = "app_admin"
 }
 
 variable "db_instance_class" {
-  type    = string
-  default = "db.t4g.micro"
+  description = "Classe da instância RDS (ex: db.t4g.micro)."
+  type        = string
+  default     = "db.t4g.micro"
 }
 
 variable "db_skip_final_snapshot" {

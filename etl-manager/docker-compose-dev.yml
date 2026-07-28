@@ -5,6 +5,13 @@ services:
     # REDIS_PASSWORD vazio = sem auth (comportamento antigo, ok em dev).
     # Defina no .env se quiser testar com autenticação igual produção.
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-}"]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD:-}' --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - etl-network
 
@@ -16,12 +23,38 @@ services:
       POSTGRES_PASSWORD: etl_pass
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etl_user -d etl_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - etl-network
 
   etls:
     build: ./etls
     image: etls:latest
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - etl-network
+
+  # Proxy que restringe o que backend/worker podem fazer no Docker daemon do
+  # host, para nao ter que montar /var/run/docker.sock direto neles (mesmo
+  # padrao usado em docker-compose.prod.yml).
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      NETWORKS: 1
+      POST: 1
+    security_opt:
+      - no-new-privileges:true
     networks:
       - etl-network
 
@@ -36,7 +69,15 @@ services:
       - VITE_API_BASE_URL=http://localhost:8000/api/
     command: npm run dev -- --host
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5173/', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - etl-network
     depends_on:
@@ -53,13 +94,13 @@ services:
     volumes:
       - ./backend:/app
       - ./etls:/etls
-      - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - DEBUG=True
       - ETL_HOST_PATH=${ETL_HOST_PATH}
       - ETL_DOCKER_NETWORK=etl-network
+      - DOCKER_HOST=tcp://socket-proxy:2375
       - PIPELINE_STORAGE_TYPE=${PIPELINE_STORAGE_TYPE}
       - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
@@ -68,9 +109,18 @@ services:
       - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
       - PIPELINE_S3_PREFIX=${PIPELINE_S3_PREFIX}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       - redis
       - postgres
+      - socket-proxy
     networks:
       - etl-network
 
@@ -80,10 +130,10 @@ services:
     volumes:
       - ./backend:/app
       - ./etls:/etls
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - ETL_HOST_PATH=${ETL_HOST_PATH}
       - ETL_DOCKER_NETWORK=etl-network
+      - DOCKER_HOST=tcp://socket-proxy:2375
       - CELERY_WORKER_CONCURRENCY=30
       - ETL_CONTAINER_MEM_LIMIT=512m
       - ETL_CONTAINER_CPUSET=
@@ -95,18 +145,29 @@ services:
       - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
       - PIPELINE_S3_PREFIX=${PIPELINE_S3_PREFIX}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       - redis
       - postgres
+      - socket-proxy
     networks:
       - etl-network
 
   beat:
     build: ./backend
     command: sh -c "celery -A config beat -l info"
+    # Sem mount de ./etls: o beat so agenda (publica mensagens na fila do
+    # Celery), nunca executa execute_pipeline nem toca em arquivos de ETL -
+    # isso sempre roda no worker. Ver pipelines/tasks.py.
     volumes:
       - ./backend:/app
-      - ./etls:/etls
     environment:
       - ETL_HOST_PATH=${ETL_HOST_PATH}
       - ETL_DOCKER_NETWORK=etl-network
@@ -118,6 +179,14 @@ services:
       - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
       - PIPELINE_S3_PREFIX=${PIPELINE_S3_PREFIX}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os,sys,time; p='/app/celerybeat-schedule'; sys.exit(0 if os.path.exists(p) and time.time()-os.path.getmtime(p) < 120 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       - redis
       - postgres

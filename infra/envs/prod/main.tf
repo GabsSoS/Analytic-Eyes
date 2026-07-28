@@ -50,3 +50,14 @@ module "compute" {
   instance_type         = var.ec2_instance_type
   ssh_public_key        = var.ssh_public_key
 }
+
+# Detecta acesso nao intencional (publico/cross-account) em recursos IAM/S3
+# desta conta. Gratis, escopo de conta unica (nao precisa de AWS Organizations).
+resource "aws_accessanalyzer_analyzer" "account" {
+  analyzer_name = "${var.name_prefix}-access-analyzer"
+  type          = "ACCOUNT"
+
+  tags = {
+    Name = "${var.name_prefix}-access-analyzer"
+  }
+}

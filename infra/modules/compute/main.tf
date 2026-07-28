@@ -16,6 +16,10 @@ data "aws_ami" "ubuntu" {
 resource "aws_key_pair" "this" {
   key_name   = "${var.name_prefix}-key"
   public_key = var.ssh_public_key
+
+  tags = {
+    Name = "${var.name_prefix}-key"
+  }
 }
 
 resource "aws_instance" "this" {
@@ -26,10 +30,12 @@ resource "aws_instance" "this" {
   key_name               = aws_key_pair.this.key_name
   iam_instance_profile   = var.instance_profile_name
   user_data              = file("${path.module}/user_data.sh")
+  monitoring             = true
 
   root_block_device {
     volume_size = var.root_volume_size_gb
     volume_type = "gp3"
+    encrypted   = true
   }
 
   tags = {

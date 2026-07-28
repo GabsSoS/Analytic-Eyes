@@ -1,15 +1,22 @@
 import sys
 import os
+import re
 import subprocess
 from pathlib import Path
 
 # Runner local para executar uma ETL diretamente a partir da pasta de exemplos.
 
+# Allowlist (em vez de blocklist): so letras/digitos/underscore (unicode),
+# espaco e hifen. Qualquer caractere fora disso - incluindo os de path
+# traversal (.. / \ :) e os que nem chegamos a antecipar - e rejeitado por
+# padrao.
+_ETL_NAME_PATTERN = re.compile(r"^[\w -]+$", re.UNICODE)
+
+
 def _validar_etl_name(etl_name):
-    for char in ['..', '/', '\\', ':', '*', '?', '"', '<', '>', '|']:
-        if char in etl_name:
-            print(f"Nome inválido de ETL: {etl_name}")
-            return False
+    if not _ETL_NAME_PATTERN.fullmatch(etl_name):
+        print(f"Nome inválido de ETL: {etl_name}")
+        return False
     return True
 
 

@@ -75,3 +75,66 @@ resource "aws_route_table_association" "public" {
 # Subnets privadas ficam só com a route table default da VPC (tráfego local
 # apenas, sem rota 0.0.0.0/0) - não precisam de uma route table dedicada
 # nem de NAT, já que o RDS não faz chamadas de saída para a internet.
+
+# Flow logs da VPC (todo o tráfego, aceito e rejeitado) para o CloudWatch -
+# rastro de auditoria mínimo esperado para um cliente regulado (FGC).
+resource "aws_cloudwatch_log_group" "vpc_flow_log" {
+  name              = "/aws/vpc/${var.name_prefix}-flow-logs"
+  retention_in_days = 90
+
+  tags = {
+    Name = "${var.name_prefix}-vpc-flow-log-group"
+  }
+}
+
+data "aws_iam_policy_document" "flow_log_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["vpc-flow-logs.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "flow_log" {
+  name               = "${var.name_prefix}-vpc-flow-log-role"
+  assume_role_policy = data.aws_iam_policy_document.flow_log_assume_role.json
+
+  tags = {
+    Name = "${var.name_prefix}-vpc-flow-log-role"
+  }
+}
+
+data "aws_iam_policy_document" "flow_log_permissions" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogGroups",
+      "logs:DescribeLogStreams",
+    ]
+    resources = ["${aws_cloudwatch_log_group.vpc_flow_log.arn}:*"]
+  }
+}
+
+resource "aws_iam_role_policy" "flow_log" {
+  name   = "${var.name_prefix}-vpc-flow-log-policy"
+  role   = aws_iam_role.flow_log.id
+  policy = data.aws_iam_policy_document.flow_log_permissions.json
+}
+
+resource "aws_flow_log" "this" {
+  iam_role_arn    = aws_iam_role.flow_log.arn
+  log_destination = aws_cloudwatch_log_group.vpc_flow_log.arn
+  traffic_type    = "ALL"
+  vpc_id          = aws_vpc.this.id
+
+  tags = {
+    Name = "${var.name_prefix}-vpc-flow-log"
+  }
+}
