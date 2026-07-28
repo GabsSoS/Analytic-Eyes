@@ -1,5 +1,6 @@
 variable "name_prefix" {
-  type = string
+  description = "Prefixo usado no nome dos recursos de compute (ex: analytic-eyes-prod)."
+  type        = string
 }
 
 variable "subnet_id" {
@@ -8,11 +9,13 @@ variable "subnet_id" {
 }
 
 variable "security_group_id" {
-  type = string
+  description = "ID do security group da EC2 (modules/security -> ec2_security_group_id)."
+  type        = string
 }
 
 variable "instance_profile_name" {
-  type = string
+  description = "Nome do instance profile IAM anexado à EC2 (modules/iam -> instance_profile_name)."
+  type        = string
 }
 
 variable "instance_type" {
@@ -22,8 +25,9 @@ variable "instance_type" {
 }
 
 variable "root_volume_size_gb" {
-  type    = number
-  default = 20
+  description = "Tamanho (GB) do volume raiz (root_block_device) da EC2."
+  type        = number
+  default     = 20
 }
 
 variable "ssh_public_key" {

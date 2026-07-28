@@ -246,6 +246,11 @@ def execute_pipeline(self, run_id):
                     },
                     "network": etl_network,
                     "remove": True,
+                    # O container roda como root de proposito (ver etls/Dockerfile),
+                    # entao dropamos todas as capabilities Linux e bloqueamos escalada
+                    # de privilegios como controle compensatorio.
+                    "cap_drop": ["ALL"],
+                    "security_opt": ["no-new-privileges:true"],
                 }
 
                 if etl_host_path:

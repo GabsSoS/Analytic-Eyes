@@ -37,6 +37,7 @@ resource "aws_security_group" "ec2" {
   }
 
   egress {
+    description = "Todo trafego de saida permitido (instancia so inicia conexoes, nunca recebe)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -63,6 +64,7 @@ resource "aws_security_group" "rds" {
   }
 
   egress {
+    description = "Todo trafego de saida permitido (RDS so inicia conexoes, nunca recebe)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"

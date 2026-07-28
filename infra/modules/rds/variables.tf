@@ -1,5 +1,6 @@
 variable "name_prefix" {
-  type = string
+  description = "Prefixo usado no nome dos recursos do RDS (ex: analytic-eyes-prod)."
+  type        = string
 }
 
 variable "private_subnet_ids" {

@@ -1,9 +1,11 @@
 variable "name_prefix" {
-  type = string
+  description = "Prefixo usado no nome dos security groups (ex: analytic-eyes-prod)."
+  type        = string
 }
 
 variable "vpc_id" {
-  type = string
+  description = "ID da VPC onde os security groups serão criados (modules/network -> vpc_id)."
+  type        = string
 }
 
 variable "ssh_allowed_cidr" {

@@ -4,6 +4,13 @@ services:
     container_name: etl-redis-prod
     restart: unless-stopped
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD}' --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - etl-network-prod
 
@@ -18,6 +25,8 @@ services:
       IMAGES: 1
       NETWORKS: 1
       POST: 1
+    security_opt:
+      - no-new-privileges:true
     networks:
       - etl-network-prod
 
@@ -27,6 +36,8 @@ services:
     container_name: etl-etls-image
     entrypoint: ["python", "-c", "print('etls image ready')"]
     restart: "no"
+    security_opt:
+      - no-new-privileges:true
     networks:
       - etl-network-prod
 
@@ -73,6 +84,14 @@ services:
       - backend_static:/app/staticfiles
       - backend_media:/app/media
       - ./etls:/etls
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       - redis
       - etls
@@ -115,6 +134,14 @@ services:
       - backend_data:/app/data
       - backend_media:/app/media
       - ./etls:/etls
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       - redis
       - etls
@@ -152,10 +179,20 @@ services:
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       AWS_S3_ENDPOINT_URL: ${AWS_S3_ENDPOINT_URL:-}
       PIPELINE_S3_PREFIX: ${PIPELINE_S3_PREFIX:-etls}
+    # Sem mount de ./etls: o beat so agenda (publica mensagens na fila do
+    # Celery), nunca executa execute_pipeline nem toca em arquivos de ETL -
+    # isso sempre roda no worker. Ver pipelines/tasks.py.
     volumes:
       - backend_data:/app/data
       - backend_media:/app/media
-      - ./etls:/etls
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os,sys,time; p='/app/celerybeat-schedule'; sys.exit(0 if os.path.exists(p) and time.time()-os.path.getmtime(p) < 120 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       - redis
       - backend
@@ -170,6 +207,14 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       - backend
     volumes:

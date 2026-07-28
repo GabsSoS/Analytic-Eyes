@@ -41,6 +41,10 @@ resource "aws_db_instance" "this" {
   deletion_protection = var.deletion_protection
   apply_immediately   = true
 
+  # Exporta logs do engine para o CloudWatch - rastro de auditoria mínimo
+  # esperado para um cliente regulado (FGC).
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+
   tags = {
     Name = "${var.name_prefix}-db"
   }

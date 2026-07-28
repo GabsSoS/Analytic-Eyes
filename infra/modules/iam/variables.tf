@@ -1,5 +1,6 @@
 variable "name_prefix" {
-  type = string
+  description = "Prefixo usado no nome da role e do instance profile IAM (ex: analytic-eyes-prod)."
+  type        = string
 }
 
 variable "db_secret_arn" {
