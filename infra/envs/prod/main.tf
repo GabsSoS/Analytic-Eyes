@@ -10,7 +10,6 @@ module "security" {
 
   name_prefix       = var.name_prefix
   vpc_id            = module.network.vpc_id
-  ssh_allowed_cidr  = var.ssh_allowed_cidr
   app_allowed_cidrs = var.app_allowed_cidrs
 }
 
@@ -44,11 +43,22 @@ module "compute" {
   source = "../../modules/compute"
 
   name_prefix           = var.name_prefix
-  subnet_id             = module.network.public_subnet_id
+  subnet_id             = module.network.app_subnet_id
   security_group_id     = module.security.ec2_security_group_id
   instance_profile_name = module.iam.instance_profile_name
   instance_type         = var.ec2_instance_type
-  ssh_public_key        = var.ssh_public_key
+}
+
+module "alb" {
+  source = "../../modules/alb"
+
+  name_prefix           = var.name_prefix
+  vpc_id                = module.network.vpc_id
+  public_subnet_ids     = module.network.public_subnet_ids
+  alb_security_group_id = module.security.alb_security_group_id
+  instance_id           = module.compute.instance_id
+  domain_name           = var.domain_name
+  domain_alt_names      = var.domain_alt_names
 }
 
 # Detecta acesso nao intencional (publico/cross-account) em recursos IAM/S3

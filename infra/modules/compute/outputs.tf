@@ -1,9 +1,9 @@
 output "instance_id" {
-  description = "ID da instância EC2."
+  description = "ID da instância EC2 (use com `aws ssm start-session --target` para acesso administrativo)."
   value       = aws_instance.this.id
 }
 
-output "public_ip" {
-  description = "Aponte o DNS (A record) do seu domínio para este IP."
-  value       = aws_eip.this.public_ip
+output "private_ip" {
+  description = "IP privado da instância, usado pelo target group do ALB (modules/alb)."
+  value       = aws_instance.this.private_ip
 }

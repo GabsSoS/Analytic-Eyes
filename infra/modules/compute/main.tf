@@ -13,21 +13,15 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-resource "aws_key_pair" "this" {
-  key_name   = "${var.name_prefix}-key"
-  public_key = var.ssh_public_key
-
-  tags = {
-    Name = "${var.name_prefix}-key"
-  }
-}
-
+# Sem key pair/SSH: a instancia fica em subnet privada, sem IP publico -
+# acesso administrativo e so via SSM Session Manager (modules/iam ja tem a
+# policy AmazonSSMManagedInstanceCore anexada), que autentica via IAM em vez
+# de chave SSH.
 resource "aws_instance" "this" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [var.security_group_id]
-  key_name               = aws_key_pair.this.key_name
   iam_instance_profile   = var.instance_profile_name
   user_data              = file("${path.module}/user_data.sh")
   monitoring             = true
@@ -38,20 +32,15 @@ resource "aws_instance" "this" {
     encrypted   = true
   }
 
+  # Exige IMDSv2 (token obrigatorio) - IMDSv1 e vulneravel a SSRF que
+  # exfiltra as credenciais da instance profile.
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+
   tags = {
     Name = "${var.name_prefix}-ec2"
-  }
-}
-
-# IP fixo - sem isso, o IP publico muda a cada stop/start (ruim pra apontar
-# DNS). Custo: gratis enquanto associado a uma instancia rodando; so cobra
-# se ficar "sobrando" sem instancia (mais um motivo pra sempre destruir
-# tudo junto via terraform destroy, nunca so parar a EC2 e deixar o EIP solto).
-resource "aws_eip" "this" {
-  instance = aws_instance.this.id
-  domain   = "vpc"
-
-  tags = {
-    Name = "${var.name_prefix}-eip"
   }
 }

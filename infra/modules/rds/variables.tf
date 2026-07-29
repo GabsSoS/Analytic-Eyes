@@ -49,6 +49,12 @@ variable "skip_final_snapshot" {
   default     = true
 }
 
+variable "backup_retention_period" {
+  description = "Dias de retencao dos backups automaticos do RDS (0 = desabilitado)."
+  type        = number
+  default     = 7
+}
+
 variable "deletion_protection" {
   description = "Trava exclusão acidental via console/CLI. Deixe false em ambiente de teste para poder destruir livremente."
   type        = bool

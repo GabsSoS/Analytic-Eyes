@@ -4,7 +4,7 @@ variable "name_prefix" {
 }
 
 variable "subnet_id" {
-  description = "Subnet pública (modules/network -> public_subnet_id)."
+  description = "Subnet privada da app (modules/network -> app_subnet_id) - sem IP público."
   type        = string
 }
 
@@ -28,9 +28,4 @@ variable "root_volume_size_gb" {
   description = "Tamanho (GB) do volume raiz (root_block_device) da EC2."
   type        = number
   default     = 20
-}
-
-variable "ssh_public_key" {
-  description = "Conteúdo da sua chave pública SSH (ex: cat ~/.ssh/id_ed25519.pub). Terraform cria o key pair na AWS a partir disto."
-  type        = string
 }

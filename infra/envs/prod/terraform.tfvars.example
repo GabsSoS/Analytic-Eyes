@@ -1,14 +1,16 @@
 # Copie para terraform.tfvars (gitignored) e preencha com seus valores reais.
 
-ssh_allowed_cidr = "SEU_IP_PUBLICO/32" # descubra com: curl -s ifconfig.me
-ssh_public_key   = "ssh-ed25519 AAAA... seu-email@exemplo.com"
-
-# Aplicação de uso interno: só esses CIDRs acessam a porta 443 (HTTPS).
-# A porta 80 continua pública só para a validação do Let's Encrypt/Certbot
-# (ver modules/security/main.tf) - não serve conteúdo real da aplicação.
+# Aplicação de uso interno: só esses CIDRs acessam o ALB (HTTP redireciona
+# pra HTTPS, HTTPS é onde a app é servida de verdade). Nunca inclua
+# 0.0.0.0/0 aqui.
 app_allowed_cidrs = [
   "IP_DO_ESCRITORIO/32",
   "IP_DA_VPN_CORPORATIVA/32",
 ]
+
+# Domínio do certificado ACM/ALB - ver "TLS (ACM)" no README para o passo
+# de validação via DNS.
+domain_name      = "seu-dominio.com"
+domain_alt_names = ["www.seu-dominio.com"]
 
 s3_bucket_name = "analytic-eyes-pipelines-prod" # precisa ser único globalmente na AWS
