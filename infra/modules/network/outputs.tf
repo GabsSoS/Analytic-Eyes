@@ -17,3 +17,8 @@ output "app_subnet_id" {
   description = "ID da subnet privada da EC2 (modules/compute) - sem IP público, sai via NAT Gateway."
   value       = aws_subnet.app.id
 }
+
+output "nat_eip_arn" {
+  description = "ARN do EIP do NAT Gateway - usado por aws_shield_protection quando enable_shield_advanced = true (ver envs/prod/main.tf)."
+  value       = aws_eip.nat.arn
+}

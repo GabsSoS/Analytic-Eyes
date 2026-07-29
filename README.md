@@ -217,13 +217,26 @@ Coloque essas variáveis em arquivos `.env` locais ou no gerenciador de secrets 
 
 ## Deploy / Produção (resumo)
 
-Evite usando o `docker-compose-dev.yml` em produção. Recomendações:
+A infraestrutura de produção é provisionada via Terraform (`infra/`) numa VPC dedicada na AWS:
 
-- build e push das imagens para registry (ECR/GCR/DockerHub);
-- orquestração com Kubernetes (EKS/GKE) ou serviços gerenciados;
-- usar RDS/Aurora para banco em produção;
-- armazenar artefatos e logs em S3/Blob e usar solução de observabilidade (Prometheus/Grafana, ELK/Cloud logging);
-- gerenciar segredos com Secret Manager / Vault / ExternalSecrets.
+- **Application Load Balancer** (TLS via AWS Certificate Manager, validação por DNS) + **WAF** como único ponto de entrada público, restrito por Security Group a uma lista de IPs internos (uso interno, não é uma aplicação pública);
+- **EC2** em subnet privada (sem IP público), executando o `docker-compose.prod.yml` — Nginx, Django/Gunicorn, Celery Worker/Beat e Redis — com saída à internet via **NAT Gateway**;
+- **RDS PostgreSQL**, credenciais geradas e gerenciadas pelo **AWS Secrets Manager** (nenhuma credencial de banco em variável de ambiente estática);
+- **S3** para armazenamento dos scripts/arquivos das pipelines;
+- **IAM Role** dedicada da instância (Secrets Manager + S3 + SSM), sem chaves de acesso estáticas em lugar nenhum;
+- Acesso administrativo exclusivamente via **AWS Systems Manager Session Manager** — a instância não expõe SSH.
+
+Provisionamento (Network Firewall e Shield Advanced ficam disponíveis como opções desligadas por padrão):
+
+```bash
+cd infra/envs/prod
+cp terraform.tfvars.example terraform.tfvars   # preencher com valores reais
+terraform init
+terraform plan
+terraform apply
+```
+
+Guia completo (ordem de aplicação, custos, segurança e deploy da aplicação): [infra/README.md](infra/README.md).
 
 ---
 
