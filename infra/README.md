@@ -30,7 +30,7 @@ infra/
     rds/              # RDS PostgreSQL, credenciais geradas no Secrets Manager
     iam/              # Role/instance profile da EC2 (Secrets Manager + S3 + SSM)
     compute/          # EC2 (sem IP público) + user_data (Docker/Compose)
-    alb/               # ALB + certificado ACM (validação DNS) + target group/listeners
+    alb/               # ALB + certificado ACM (validação DNS) + WAF + target group/listeners
   envs/
     prod/             # Une os módulos acima com o backend remoto (S3+DynamoDB)
 ```
@@ -150,6 +150,9 @@ da AWS](https://calculator.aws) antes de aplicar.
 | Secrets Manager | ~US$0.40/mês | Um secret (o gerenciado pelo RDS) |
 | S3 + DynamoDB (state) | Centavos | Uso mínimo |
 | Certificado ACM | Grátis | Emissão e renovação não têm custo |
+| AWS WAFv2 | ~US$6-8/mês | Web ACL com 2 managed rule groups (Core Rule Set + Known Bad Inputs) na frente do ALB |
+| **AWS Network Firewall** (opcional) | **Não usado por padrão** (~US$395/mês + processamento se ligado) | `enable_network_firewall = true` inspeciona a saída da EC2 e só libera os domínios configurados (Docker Hub, PyPI, npm, apt, GitHub, AWS) - fica todo pronto no Terraform, mas desligado até você decidir ativar |
+| **AWS Shield Advanced** (opcional) | **Não usado por padrão** (US$3.000/mês, 1 ano de compromisso, se assinado) | `enable_shield_advanced = true` só associa o ALB/NAT EIP à proteção - a assinatura em si é feita manualmente no Console/CLI, o Terraform não assina por você |
 
 **A maior economia de todas**: como é tudo IaC, rode `terraform destroy` em
 `envs/prod` quando não estiver testando, e reaplique (repetindo o passo de
@@ -163,7 +166,8 @@ terraform destroy   # derruba tudo (exceto o bootstrap)
 
 Quando isto virar produção de verdade (com usuários reais, sem poder ficar
 ligando/desligando), revisite: `db_skip_final_snapshot = false`,
-`deletion_protection = true`, considerar Multi-AZ no RDS.
+`deletion_protection = true` (RDS), `alb_deletion_protection = true` (ALB),
+considerar Multi-AZ no RDS.
 
 ## Segurança
 
@@ -171,6 +175,9 @@ ligando/desligando), revisite: `db_skip_final_snapshot = false`,
   criada em `modules/iam`, exatamente como `secrets_manager.py` e
   `pipelines/storage.py` (S3Storage) já esperam.
 - RDS sem IP público, só acessível pelo Security Group da EC2.
+- ALB protegido por um **WAFv2** (managed rule groups Core Rule Set +
+  Known Bad Inputs) e com **access logs** habilitados num bucket S3
+  dedicado (`modules/alb`).
 - **EC2 sem IP público e sem porta SSH exposta** - fica em subnet privada,
   só recebe tráfego do ALB (porta 80, HTTP puro - o TLS já foi terminado no
   ALB). Acesso administrativo é só via SSM Session Manager.

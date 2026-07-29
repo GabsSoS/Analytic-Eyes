@@ -14,3 +14,14 @@ domain_name      = "seu-dominio.com"
 domain_alt_names = ["www.seu-dominio.com"]
 
 s3_bucket_name = "analytic-eyes-pipelines-prod" # precisa ser único globalmente na AWS
+
+# Network Firewall (opcional): inspeciona a saída da EC2, só libera os
+# domínios em modules/network/variables.tf (Docker Hub, PyPI, npm, apt,
+# GitHub, AWS). Desligado por padrão - custo real de ~US$395/mês +
+# processamento se ligar. Descomente pra habilitar:
+# enable_network_firewall = true
+
+# Shield Advanced (opcional): só funciona se a conta JÁ tiver assinatura
+# ativa do Shield Advanced (US$3.000/mês, feita manualmente no Console -
+# não é algo que o Terraform cria). Descomente só depois de assinar:
+# enable_shield_advanced = true

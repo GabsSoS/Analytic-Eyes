@@ -1,3 +1,8 @@
+output "alb_arn" {
+  description = "ARN do ALB - usado por aws_shield_protection quando enable_shield_advanced = true (ver envs/prod/main.tf)."
+  value       = aws_lb.this.arn
+}
+
 output "alb_dns_name" {
   description = "Aponte um CNAME/ALIAS do seu domínio para este endereço (substitui o antigo A record pro IP da EC2)."
   value       = aws_lb.this.dns_name

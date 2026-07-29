@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && apt-get update \
  && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql17=17.11.1.1-1 \
  && rm -rf /var/lib/apt/lists/* \
- && pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir --upgrade pip==26.1.2 \
  && set -e; \
 	for f in $(find . -type f -name 'requirements.txt'); do \
 		echo "Instalando dependências de $f"; \

@@ -33,3 +33,9 @@ variable "domain_alt_names" {
   type        = list(string)
   default     = []
 }
+
+variable "alb_deletion_protection" {
+  description = "Trava exclusão acidental do ALB via console/CLI. Deixe false em ambiente de teste para poder destruir livremente (mesmo padrão de modules/rds.deletion_protection)."
+  type        = bool
+  default     = false
+}

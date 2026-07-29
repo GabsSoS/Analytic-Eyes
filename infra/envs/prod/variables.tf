@@ -23,6 +23,22 @@ variable "app_allowed_cidrs" {
   type        = list(string)
 }
 
+# --- Shield Advanced (opcional) ---
+
+variable "enable_shield_advanced" {
+  description = "true = associa o ALB e o EIP do NAT ao AWS Shield Advanced. So funciona se a conta ja tiver assinatura ATIVA do Shield Advanced (US$3.000/mes, compromisso de 1 ano - assinatura feita manualmente no Console/CLI, o Terraform nao cria a assinatura em si). false (padrao) = nao cria nada aqui; Shield Standard (gratis, automatico) continua protegendo normalmente."
+  type        = bool
+  default     = false
+}
+
+# --- Network Firewall (opcional) ---
+
+variable "enable_network_firewall" {
+  description = "true = cria o AWS Network Firewall (~US$395/mes + processamento) inspecionando a saida da EC2. false (padrao) = infra igual a hoje, sem custo extra."
+  type        = bool
+  default     = false
+}
+
 # --- ALB / ACM ---
 
 variable "domain_name" {
@@ -34,6 +50,12 @@ variable "domain_alt_names" {
   description = "Domínios adicionais (SANs), ex: [\"www.analytic-eyes.com\"]."
   type        = list(string)
   default     = []
+}
+
+variable "alb_deletion_protection" {
+  description = "Trava exclusão acidental do ALB via console/CLI. Deixe false em ambiente de teste para poder destruir livremente (mesmo padrão de db_deletion_protection)."
+  type        = bool
+  default     = false
 }
 
 # --- S3 ---
