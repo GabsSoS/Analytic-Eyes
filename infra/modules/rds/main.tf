@@ -37,6 +37,16 @@ resource "aws_db_instance" "this" {
   publicly_accessible    = false
   multi_az               = false
 
+  # Backup automatico diario + copia as tags do instance pro snapshot -
+  # rastro de recuperacao minimo esperado para um cliente regulado (FGC).
+  backup_retention_period = var.backup_retention_period
+  backup_window           = "03:00-04:00"
+  copy_tags_to_snapshot   = true
+
+  # Permite login via token IAM (alem do usuario/senha do Secrets Manager
+  # ja usado hoje) - nao substitui o auth atual, so adiciona a opcao.
+  iam_database_authentication_enabled = true
+
   skip_final_snapshot = var.skip_final_snapshot
   deletion_protection = var.deletion_protection
   apply_immediately   = true

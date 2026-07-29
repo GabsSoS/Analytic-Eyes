@@ -10,5 +10,10 @@ RUN npm run build
 
 FROM nginx:alpine
 
+# curl so para o HEALTHCHECK do docker-compose (checar o proprio nginx em
+# localhost, sem TLS - a criptografia externa e feita pelo Certbot/nginx no
+# host, ver infra/README.md).
+RUN apk add --no-cache curl
+
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY --from=frontend-build /frontend/dist /usr/share/nginx/html

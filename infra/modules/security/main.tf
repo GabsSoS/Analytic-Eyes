@@ -1,33 +1,21 @@
-# SG da EC2: 22 (SSH, restrito ao seu IP), 80/443 (HTTP/HTTPS, público -
-# é o site + a validação HTTP-01 do certbot).
-resource "aws_security_group" "ec2" {
-  name        = "${var.name_prefix}-ec2-sg"
-  description = "EC2 do backend/nginx - SSH restrito, HTTP/HTTPS publico"
+# SG do ALB: unico ponto de entrada publico da aplicacao. Restrito aos CIDRs
+# de app_allowed_cidrs (escritorio/VPN) - a app e de uso interno, nunca deve
+# aceitar 0.0.0.0/0. A porta 80 so existe pra redirecionar pra 443 (o
+# certificado agora e emitido via ACM com validacao DNS, entao nao precisa
+# mais ficar aberta pro desafio HTTP-01 do Let's Encrypt).
+resource "aws_security_group" "alb" {
+  name        = "${var.name_prefix}-alb-sg"
+  description = "ALB - HTTP/HTTPS restritos aos CIDRs internos da aplicacao"
   vpc_id      = var.vpc_id
 
   ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.ssh_allowed_cidr]
-  }
-
-  # Porta 80 continua publica de proposito: o Certbot usa o desafio HTTP-01
-  # do Let's Encrypt para emitir/renovar o certificado, e isso exige que os
-  # servidores da Let's Encrypt (IPs arbitrarios, fora do nosso controle)
-  # consigam alcancar essa porta. O nginx so responde a validacao do
-  # certificado e redireciona pra HTTPS aqui - nao serve conteudo real da
-  # aplicacao em texto plano, entao nao ha dado sensivel exposto.
-  ingress {
-    description = "HTTP (so validacao Lets Encrypt + redirect pra HTTPS)"
+    description = "HTTP (redirect pra HTTPS)"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.app_allowed_cidrs
   }
 
-  # Aqui sim fica restrito: e onde a aplicacao de verdade e servida.
   ingress {
     description = "HTTPS (uso interno - IPs da empresa/VPN)"
     from_port   = 443
@@ -37,7 +25,37 @@ resource "aws_security_group" "ec2" {
   }
 
   egress {
-    description = "Todo trafego de saida permitido (instancia so inicia conexoes, nunca recebe)"
+    description = "Trafego pro SG da EC2 (target group do ALB)"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.name_prefix}-alb-sg"
+  }
+}
+
+# SG da EC2: sem nenhuma porta publica - a instancia nao tem IP publico e so
+# recebe trafego do ALB (porta 80, HTTP puro - o TLS ja foi terminado no
+# ALB). Acesso administrativo e via SSM Session Manager (modules/iam), que
+# nao depende de nenhuma porta de ingress aqui.
+resource "aws_security_group" "ec2" {
+  name        = "${var.name_prefix}-ec2-sg"
+  description = "EC2 do backend/nginx - so aceita trafego do ALB"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description     = "HTTP a partir do ALB"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  egress {
+    description = "Todo trafego de saida permitido (NAT Gateway pra internet + RDS)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"

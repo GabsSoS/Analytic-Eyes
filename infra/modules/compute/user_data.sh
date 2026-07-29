@@ -24,8 +24,5 @@ systemctl enable docker
 systemctl start docker
 usermod -aG docker ubuntu
 
-# Certbot (Let's Encrypt) - TLS gratuito direto no host, sem ALB.
-# A emissao do certificado em si (certbot certonly ...) fica como passo
-# manual apos o DNS do dominio apontar para o IP desta instancia (ver
-# infra/README.md), ja que o dominio ainda nao esta configurado aqui.
-apt-get install -y certbot
+# TLS e responsabilidade do ALB (modules/alb, certificado ACM) - nao precisa
+# de Certbot nesta instancia.

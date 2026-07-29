@@ -59,7 +59,7 @@ def executar_etl(etl_name, run_id):
                     "--force-reinstall",
                     "-r",
                     str(req_file),
-                ], cwd=str(etl_dir), check=True)
+                ], cwd=str(etl_dir), check=True, shell=False)
             except subprocess.CalledProcessError as e:
                 print(f" Falha ao instalar dependências: {e}", file=sys.stderr)
                 sys.exit(1)
@@ -69,7 +69,8 @@ def executar_etl(etl_name, run_id):
             cwd=str(etl_dir),
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutos timeout
+            timeout=300,  # 5 minutos timeout
+            shell=False,
         )
         # Exibe saída e erros capturados do processo de execução
         print(result.stdout)

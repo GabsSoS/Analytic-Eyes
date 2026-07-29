@@ -5,9 +5,6 @@ WORKDIR /etls
 # Copia TODAS as ETLs
 COPY . .
 
-# Atualiza pip
-RUN pip install --upgrade pip
-
 # Instala dependências do ODBC para o pyodbc
 
 # Versoes pinadas conforme disponivel nos repositorios no momento deste build
@@ -27,10 +24,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
  && apt-get update \
  && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql17=17.11.1.1-1 \
- && rm -rf /var/lib/apt/lists/*
-
-# instala dependencia do requirements.txt
-RUN set -e; \
+ && rm -rf /var/lib/apt/lists/* \
+ && pip install --no-cache-dir --upgrade pip \
+ && set -e; \
 	for f in $(find . -type f -name 'requirements.txt'); do \
 		echo "Instalando dependências de $f"; \
 		pip install --no-cache-dir --upgrade --force-reinstall -r "$f"; \

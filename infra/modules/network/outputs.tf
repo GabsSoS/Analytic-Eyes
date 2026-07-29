@@ -3,12 +3,17 @@ output "vpc_id" {
   value       = aws_vpc.this.id
 }
 
-output "public_subnet_id" {
-  description = "ID da subnet pública, usada pela EC2 (modules/compute)."
-  value       = aws_subnet.public.id
+output "public_subnet_ids" {
+  description = "IDs das 2 subnets públicas (>= 2 AZs), usadas pelo ALB (modules/alb)."
+  value       = [aws_subnet.public.id, aws_subnet.public_b.id]
 }
 
 output "private_subnet_ids" {
   description = "IDs das subnets privadas (>= 2 AZs), usadas pelo db_subnet_group do RDS."
   value       = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+}
+
+output "app_subnet_id" {
+  description = "ID da subnet privada da EC2 (modules/compute) - sem IP público, sai via NAT Gateway."
+  value       = aws_subnet.app.id
 }

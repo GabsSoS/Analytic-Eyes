@@ -49,7 +49,7 @@ data "aws_iam_policy_document" "secrets" {
     sid       = "DecryptViaSecretsManager"
     effect    = "Allow"
     actions   = ["kms:Decrypt"]
-    resources = ["*"]
+    resources = [data.aws_kms_alias.secretsmanager.target_key_arn]
 
     condition {
       test     = "StringEquals"
@@ -60,6 +60,13 @@ data "aws_iam_policy_document" "secrets" {
 }
 
 data "aws_region" "current" {}
+
+# Resolve o ARN real da KMS key gerenciada pela AWS (alias/aws/secretsmanager)
+# pra nunca precisar de Resource = "*" na policy - o Orca aponta Resource "*"
+# em kms:Decrypt como risco de exfiltracao mesmo com a condition ViaService.
+data "aws_kms_alias" "secretsmanager" {
+  name = "alias/aws/secretsmanager"
+}
 
 resource "aws_iam_role_policy" "secrets" {
   name   = "${var.name_prefix}-secrets-access"

@@ -10,9 +10,15 @@ variable "vpc_cidr" {
 }
 
 variable "public_subnet_cidr" {
-  description = "CIDR da subnet pública (EC2)."
+  description = "CIDR da subnet pública A (ALB + NAT Gateway)."
   type        = string
   default     = "10.20.1.0/24"
+}
+
+variable "public_subnet_cidr_b" {
+  description = "CIDR da subnet pública B - o ALB exige subnets em >= 2 AZs mesmo com um unico target."
+  type        = string
+  default     = "10.20.4.0/24"
 }
 
 variable "private_subnet_cidr" {
@@ -25,6 +31,12 @@ variable "private_subnet_cidr_b" {
   description = "CIDR da segunda subnet privada (RDS exige >= 2 AZs no db_subnet_group, mesmo em Single-AZ)."
   type        = string
   default     = "10.20.3.0/24"
+}
+
+variable "app_subnet_cidr" {
+  description = "CIDR da subnet privada da EC2 (app) - sai para a internet via NAT Gateway, nunca recebe IP publico."
+  type        = string
+  default     = "10.20.5.0/24"
 }
 
 variable "azs" {

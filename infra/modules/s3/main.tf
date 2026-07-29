@@ -43,6 +43,13 @@ resource "aws_s3_bucket" "pipelines_logs" {
   }
 }
 
+resource "aws_s3_bucket_versioning" "pipelines_logs" {
+  bucket = aws_s3_bucket.pipelines_logs.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "pipelines_logs" {
   bucket                  = aws_s3_bucket.pipelines_logs.id
   block_public_acls       = true

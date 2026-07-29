@@ -18,19 +18,22 @@ variable "azs" {
 
 # --- Acesso ---
 
-variable "ssh_allowed_cidr" {
-  description = "Seu IP público em formato CIDR (ex: \"203.0.113.10/32\"). Descubra com: curl -s ifconfig.me"
-  type        = string
-}
-
-variable "ssh_public_key" {
-  description = "Conteúdo da chave pública SSH (cat ~/.ssh/id_ed25519.pub)."
-  type        = string
-}
-
 variable "app_allowed_cidrs" {
-  description = "CIDRs autorizados a acessar a aplicação em HTTPS (ex: IP da VPN corporativa, IP do escritório). Aplicação de uso interno - nunca inclua 0.0.0.0/0."
+  description = "CIDRs autorizados a acessar a aplicação no ALB (HTTP/HTTPS) (ex: IP da VPN corporativa, IP do escritório). Aplicação de uso interno - nunca inclua 0.0.0.0/0."
   type        = list(string)
+}
+
+# --- ALB / ACM ---
+
+variable "domain_name" {
+  description = "Domínio principal do certificado ACM/ALB (ex: analytic-eyes.com)."
+  type        = string
+}
+
+variable "domain_alt_names" {
+  description = "Domínios adicionais (SANs), ex: [\"www.analytic-eyes.com\"]."
+  type        = list(string)
+  default     = []
 }
 
 # --- S3 ---

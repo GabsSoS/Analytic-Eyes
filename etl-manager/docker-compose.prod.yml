@@ -6,6 +6,14 @@ services:
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # A imagem oficial sobe como root e usa setpriv pra trocar pro usuario
+    # "redis" antes de rodar o servidor - sem essas 2 capabilities o
+    # entrypoint falha (setresuid/setresgid).
+    cap_add:
+      - SETUID
+      - SETGID
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD}' --no-auth-warning ping | grep -q PONG"]
       interval: 10s
@@ -27,6 +35,14 @@ services:
       POST: 1
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2375"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - etl-network-prod
 
@@ -38,6 +54,11 @@ services:
     restart: "no"
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Sem healthcheck de proposito: o container imprime e sai (exit 0) na
+    # hora - e um placeholder pra imagem ficar construida, nunca fica de pe
+    # como processo de longa duracao pra um healthcheck fazer sentido.
     networks:
       - etl-network-prod
 
@@ -86,6 +107,8 @@ services:
       - ./etls:/etls
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/', timeout=3)"]
       interval: 15s
@@ -136,6 +159,8 @@ services:
       - ./etls:/etls
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping"]
       interval: 30s
@@ -187,6 +212,8 @@ services:
       - backend_media:/app/media
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import os,sys,time; p='/app/celerybeat-schedule'; sys.exit(0 if os.path.exists(p) and time.time()-os.path.getmtime(p) < 120 else 1)\""]
       interval: 30s
@@ -209,8 +236,19 @@ services:
       - "80:80"
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # O master process do nginx sobe como root pra poder abrir a porta 80
+    # (privilegiada), ajustar o dono do cache (/var/cache/nginx/*) e depois
+    # derrubar privilegio pros workers (usuario "nginx", ver nginx.conf) -
+    # testado sem essas 4 capabilities e o container nao sobe.
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      test: ["CMD", "curl", "--fail", "--silent", "--output", "/dev/null", "http://localhost/"]
       interval: 15s
       timeout: 5s
       retries: 5

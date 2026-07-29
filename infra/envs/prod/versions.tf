@@ -22,4 +22,14 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+
+  # Aplica tags padrao em TODO recurso do provider automaticamente - cobre
+  # a falta de tags que o Orca aponta em recursos que so tinham "Name".
+  default_tags {
+    tags = {
+      Project     = var.name_prefix
+      Environment = "prod"
+      ManagedBy   = "terraform"
+    }
+  }
 }
