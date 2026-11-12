@@ -1,5 +1,14 @@
 # Analytic Eyes
 
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![Django REST](https://img.shields.io/badge/Django%20REST-092E20?logo=django&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)
+![Celery](https://img.shields.io/badge/Celery-37814A?logo=celery&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Licença Apache 2.0](https://img.shields.io/badge/licen%C3%A7a-Apache%202.0-blue)
+
 Analytic Eyes é uma plataforma para gerenciar, orquestrar e executar pipelines ETL com foco em:
 
 - isolamento seguro de execução (containers);
@@ -83,6 +92,12 @@ flowchart LR
   Docker -->|logs/status| API
   API --> DB[(SQLite/Postgres)]
 ```
+
+Fluxo completo de uma execução:
+
+![Fluxo de execução de uma pipeline](docs/diagramas/diagrama-funcionamento-aplicacao.png)
+
+Outros diagramas: [arquitetura na AWS](docs/diagramas/diagrama-arquitetura-aws.png) · [modelo do banco de dados](docs/diagramas/diagrama-banco-de-dados.png)
 
 ---
 
